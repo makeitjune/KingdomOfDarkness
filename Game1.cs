@@ -24,10 +24,12 @@ public class Game1 : Game
     // Entities & Systems
     private Texture2D _whitePixel;
     private Player _player;
+    private Companion _companion;
     private List<Entity> _entities;
     
     // Systems
     private IsoMovementSystem _movementSystem;
+    private CompanionAISystem _companionAISystem;
     private RenderOrderSystem _renderOrderSystem;
 
     public Game1()
@@ -56,11 +58,15 @@ public class Game1 : Game
         // Instantiate player at map center
         _player = new Player(_whitePixel, new Vector2(10f, 10f));
 
-        // Instantiate entity list
-        _entities = new List<Entity> { _player };
+        // Instantiate companion near player
+        _companion = new Companion(_whitePixel, _player.WorldPosition + new Vector2(-1f, 1f));
+
+        // Instantiate entity list and add characters
+        _entities = new List<Entity> { _player, _companion };
 
         // Instantiate systems
         _movementSystem = new IsoMovementSystem();
+        _companionAISystem = new CompanionAISystem();
         _renderOrderSystem = new RenderOrderSystem();
 
         // Position camera to look at the player immediately
@@ -92,6 +98,11 @@ public class Game1 : Game
         _player.UpdateInput(_inputManager);
         _movementSystem.Update(gameTime, _player);
         _player.Update(gameTime);
+
+        // Update Companion AI and Physics
+        _companionAISystem.Update(gameTime, _companion, _player);
+        _movementSystem.Update(gameTime, _companion);
+        _companion.Update(gameTime);
 
         // Camera follow player in world-screen space
         Vector2 targetScreenPos = IsoMath.WorldToScreen(_player.WorldPosition);
