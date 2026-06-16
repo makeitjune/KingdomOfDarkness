@@ -21,6 +21,7 @@ public class Game1 : Game
 
     // World Map
     private IsoTileMap _tileMap;
+    private CollisionMap _collisionMap;
 
     // Entities
     private Texture2D _whitePixel;
@@ -63,6 +64,9 @@ public class Game1 : Game
 
         // Instantiate map after GraphicsDevice is initialized
         _tileMap = new IsoTileMap(GraphicsDevice, 20, 20);
+
+        // Instantiate collision map
+        _collisionMap = new CollisionMap(_tileMap);
 
         // Instantiate player at map center
         _player = new Player(_whitePixel, new Vector2(10f, 10f));
@@ -122,7 +126,7 @@ public class Game1 : Game
 
         // Update Player Input and Physics
         _player.UpdateInput(_inputManager);
-        _movementSystem.Update(gameTime, _player);
+        _movementSystem.Update(gameTime, _player, _collisionMap);
         _player.Update(gameTime);
 
         // Update Dialogue reaction system cooldowns
@@ -130,7 +134,7 @@ public class Game1 : Game
 
         // Update Companion AI, Speech Bubble, and Physics
         _companionAISystem.Update(gameTime, _companion, _player, _dialogueReactionSystem);
-        _movementSystem.Update(gameTime, _companion);
+        _movementSystem.Update(gameTime, _companion, _collisionMap);
         _companion.Update(gameTime);
         _companion.Bubble.Update(gameTime);
 
@@ -138,7 +142,7 @@ public class Game1 : Game
         foreach (var monster in _monsters)
         {
             _monsterAISystem.Update(gameTime, monster, _player, _companion);
-            _movementSystem.Update(gameTime, monster);
+            _movementSystem.Update(gameTime, monster, _collisionMap);
             monster.Update(gameTime);
         }
 
