@@ -15,7 +15,7 @@ public class IsoTileMap
     private Texture2D _tileTexture;
     private Texture2D _whitePixel;
 
-    public IsoTileMap(GraphicsDevice graphicsDevice, int width = 20, int height = 20)
+    public IsoTileMap(GraphicsDevice graphicsDevice, int width = 40, int height = 40)
     {
         Width = width;
         Height = height;
@@ -34,20 +34,32 @@ public class IsoTileMap
         {
             for (int y = 0; y < Height; y++)
             {
-                TileType type = TileType.Ground;
+                TileType type = TileType.Grass;
 
-                // Create some walls / water for visual variety and collision tests
+                // Create variety of terrain
                 if (x == 0 || y == 0 || x == Width - 1 || y == Height - 1)
                 {
                     type = TileType.Blocked; // map edge wall
                 }
-                else if (x == 5 && y >= 5 && y <= 10)
+                else if (x >= 5 && x <= 15 && y >= 5 && y <= 8)
+                {
+                    type = TileType.Dirt; // Dirt patch
+                }
+                else if (x >= 20 && x <= 25 && y >= 20 && y <= 25)
+                {
+                    type = TileType.Sand; // Sand area
+                }
+                else if (x >= 25 && x <= 30 && y >= 8 && y <= 12)
+                {
+                    type = TileType.Stone; // Stone path
+                }
+                else if (x >= 12 && x <= 18 && y >= 28 && y <= 35)
+                {
+                    type = TileType.Water; // Lake
+                }
+                else if (x == 15 && y >= 10 && y <= 20)
                 {
                     type = TileType.Blocked; // middle wall
-                }
-                else if (x >= 12 && x <= 15 && y >= 12 && y <= 15)
-                {
-                    type = TileType.Water; // lake
                 }
 
                 _tiles[x, y] = new IsoTile(x, y, type);
@@ -132,6 +144,14 @@ public class IsoTileMap
                 IsoTile tile = _tiles[x, y];
                 Vector2 worldPos = new Vector2(x, y);
                 Vector2 screenPos = camera.WorldToCameraScreen(worldPos);
+
+                // Frustum culling: only draw if tile is within screen bounds (with padding)
+                float cullPadding = 100f;
+                if (screenPos.X < -cullPadding || screenPos.X > GameConstants.ScreenWidth + cullPadding ||
+                    screenPos.Y < -cullPadding || screenPos.Y > GameConstants.ScreenHeight + cullPadding)
+                {
+                    continue;
+                }
 
                 spriteBatch.Draw(
                     _tileTexture,

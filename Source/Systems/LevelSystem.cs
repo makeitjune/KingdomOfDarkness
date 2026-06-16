@@ -1,4 +1,5 @@
 using KingdomOfDarkness.Entities;
+using KingdomOfDarkness.Data;
 
 namespace KingdomOfDarkness.Systems;
 
@@ -21,11 +22,17 @@ public class LevelSystem
             character.Level++;
             leveledUp = true;
 
-            // Stat growth
-            character.MaxHP += 15;
+            // Stat growth based on class
+            var classData = ClassDatabase.GetClass(character.ClassType);
+            
+            character.MaxHP += classData.HpPerLevel;
             character.CurrentHP = character.MaxHP; // Heal to full on level up
-            character.AttackPower += 3;
-            character.Defense += 1;
+            
+            character.MaxMP += classData.MpPerLevel;
+            character.CurrentMP = character.MaxMP;
+            
+            character.AttackPower += classData.AtkPerLevel;
+            character.Defense += classData.DefPerLevel;
         }
 
         return leveledUp;

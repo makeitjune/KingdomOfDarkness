@@ -7,6 +7,9 @@ public class InputManager
 {
     private KeyboardState _currentKeyboardState;
     private KeyboardState _previousKeyboardState;
+    
+    private MouseState _currentMouseState;
+    private MouseState _previousMouseState;
 
     public Vector2 MovementIntent { get; private set; }
     public bool IsAttackRequested { get; private set; }
@@ -15,6 +18,9 @@ public class InputManager
     {
         _previousKeyboardState = _currentKeyboardState;
         _currentKeyboardState = Keyboard.GetState();
+
+        _previousMouseState = _currentMouseState;
+        _currentMouseState = Mouse.GetState();
 
         UpdateMovementIntent();
         UpdateActions();
@@ -25,34 +31,25 @@ public class InputManager
         float dx = 0f;
         float dy = 0f;
 
-        // W => worldY - 1 (moves toward upper-right screen diagonal)
-        if (_currentKeyboardState.IsKeyDown(Keys.W))
+        // Strict Single-Axis Movement (Diagonal on screen)
+        if (_currentKeyboardState.IsKeyDown(Keys.Up))
         {
             dy -= 1f;
         }
-        // S => worldY + 1 (moves toward lower-left screen diagonal)
-        if (_currentKeyboardState.IsKeyDown(Keys.S))
+        else if (_currentKeyboardState.IsKeyDown(Keys.Down))
         {
             dy += 1f;
         }
-        // A => worldX - 1 (moves toward upper-left screen diagonal)
-        if (_currentKeyboardState.IsKeyDown(Keys.A))
+        else if (_currentKeyboardState.IsKeyDown(Keys.Left))
         {
             dx -= 1f;
         }
-        // D => worldX + 1 (moves toward lower-right screen diagonal)
-        if (_currentKeyboardState.IsKeyDown(Keys.D))
+        else if (_currentKeyboardState.IsKeyDown(Keys.Right))
         {
             dx += 1f;
         }
 
-        Vector2 intent = new Vector2(dx, dy);
-        if (intent.LengthSquared() > 1f)
-        {
-            intent.Normalize();
-        }
-
-        MovementIntent = intent;
+        MovementIntent = new Vector2(dx, dy);
     }
 
     private void UpdateActions()
@@ -66,4 +63,11 @@ public class InputManager
     {
         return _currentKeyboardState.IsKeyDown(key) && _previousKeyboardState.IsKeyUp(key);
     }
+
+    public bool IsLeftMouseClicked()
+    {
+        return _currentMouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released;
+    }
+
+    public Vector2 MousePosition => new Vector2(_currentMouseState.X, _currentMouseState.Y);
 }

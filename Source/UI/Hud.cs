@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using KingdomOfDarkness.Core;
@@ -15,10 +16,10 @@ public class Hud
         _whitePixel = whitePixel;
     }
 
-    public void Draw(SpriteBatch spriteBatch, Player player, Companion companion, Texture2D whitePixel)
+    public void Draw(SpriteBatch spriteBatch, Player player, List<Companion> companions, Texture2D whitePixel)
     {
         // Draw bottom party status panel
-        DrawPartyPanel(spriteBatch, player, companion);
+        DrawPartyPanel(spriteBatch, player, companions);
 
         // Draw top target monster panel if player has a live target
         if (player.Target != null && !player.Target.IsDead)
@@ -27,10 +28,13 @@ public class Hud
         }
     }
 
-    private void DrawPartyPanel(SpriteBatch spriteBatch, Player player, Companion companion)
+    private void DrawPartyPanel(SpriteBatch spriteBatch, Player player, List<Companion> companions)
     {
+        int recruitedCount = 0;
+        foreach (var c in companions) { if (c.IsRecruited) recruitedCount++; }
+
         int panelW = 380;
-        int panelH = 140;
+        int panelH = 70 + (recruitedCount * 40); // Dynamic height
         Vector2 panelPos = new Vector2(20, GameConstants.ScreenHeight - panelH - 20);
 
         // 1. Draw Panel Background (Glassmorphism dark gray)
@@ -44,40 +48,42 @@ public class Hud
         DrawOutline(spriteBatch, new Rectangle((int)panelPos.X, (int)panelPos.Y, panelW, panelH), new Color(100, 110, 120, 150), 1);
 
         // Header
-        SimpleFont.DrawString(spriteBatch, _whitePixel, "PARTY STATUS", panelPos + new Vector2(15, 12), Color.Gold, 1.0f);
+        FontManager.DrawString(spriteBatch, "파티 상태", panelPos + new Vector2(15, 12), Color.Gold, 0.85f);
 
         // 2. Draw Player Stats
         Vector2 playerStatsPos = panelPos + new Vector2(15, 36);
-        string playerText = $"PLAYER  LVL {player.Level}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, playerText, playerStatsPos, Color.White, 0.8f);
+        string playerText = $"[{player.ClassType}] {player.Name}  Lv.{player.Level}";
+        FontManager.DrawString(spriteBatch, playerText, playerStatsPos, Color.White, 0.7f);
 
-        // HP Bar
+        // HP/MP Bar
         Vector2 playerHpPos = playerStatsPos + new Vector2(0, 14);
-        DrawStatusBar(spriteBatch, playerHpPos, 160, 10, player.CurrentHP, player.MaxHP, Color.Crimson, "HP");
+        DrawStatusBar(spriteBatch, playerHpPos, 100, 6, player.CurrentHP, player.MaxHP, Color.Crimson, "HP");
+        DrawStatusBar(spriteBatch, playerHpPos + new Vector2(140, 0), 80, 6, player.CurrentMP, player.MaxMP, Color.DodgerBlue, "MP");
         string playerHpStr = $"{player.CurrentHP}/{player.MaxHP}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, playerHpStr, playerHpPos + new Vector2(170, 0), Color.LightGray, 0.7f);
-
-        // EXP Bar (Standard LevelSystem 100 XP per level)
-        Vector2 playerExpPos = playerHpPos + new Vector2(0, 14);
-        int expNeeded = player.Level * 100;
-        DrawStatusBar(spriteBatch, playerExpPos, 160, 6, player.Experience, expNeeded, Color.DodgerBlue, "XP");
-        string playerExpStr = $"{player.Experience}/{expNeeded} EXP";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, playerExpStr, playerExpPos + new Vector2(170, 0), Color.LightGray, 0.7f);
+        FontManager.DrawString(spriteBatch, playerHpStr, playerHpPos + new Vector2(250, 0), Color.LightGray, 0.60f);
 
         // 3. Draw Companion Stats
-        Vector2 compStatsPos = panelPos + new Vector2(15, 86);
-        string compText = $"COMPANION  LVL {companion.Level}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, compText, compStatsPos, Color.White, 0.8f);
+        int compIndex = 0;
+        foreach (var comp in companions)
+        {
+            if (!comp.IsRecruited) continue;
+            Vector2 compStatsPos = playerStatsPos + new Vector2(0, 36 + (compIndex * 40));
+            string compText = $"[{comp.ClassType}] {comp.Name}  Lv.{comp.Level}";
+            FontManager.DrawString(spriteBatch, compText, compStatsPos, Color.White, 0.65f);
 
-        // HP Bar
-        Vector2 compHpPos = compStatsPos + new Vector2(0, 14);
-        DrawStatusBar(spriteBatch, compHpPos, 160, 10, companion.CurrentHP, companion.MaxHP, Color.Crimson, "HP");
-        string compHpStr = $"{companion.CurrentHP}/{companion.MaxHP}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, compHpStr, compHpPos + new Vector2(170, 0), Color.LightGray, 0.7f);
+            // HP/MP Bar
+            Vector2 compHpPos = compStatsPos + new Vector2(0, 14);
+            DrawStatusBar(spriteBatch, compHpPos, 100, 6, comp.CurrentHP, comp.MaxHP, Color.Crimson, "HP");
+            DrawStatusBar(spriteBatch, compHpPos + new Vector2(140, 0), 80, 6, comp.CurrentMP, comp.MaxMP, Color.DodgerBlue, "MP");
+            string compHpStr = $"{comp.CurrentHP}/{comp.MaxHP}";
+            FontManager.DrawString(spriteBatch, compHpStr, compHpPos + new Vector2(250, 0), Color.LightGray, 0.60f);
 
-        // Companion State text
-        string stateStr = $"STATE: {companion.State.ToString().ToUpper()}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, stateStr, compHpPos + new Vector2(170, -12), Color.Plum, 0.7f);
+            // Companion State text
+            string stateStr = GetKoreanState(comp.State);
+            FontManager.DrawString(spriteBatch, stateStr, compStatsPos + new Vector2(250, -4), Color.Plum, 0.6f);
+            
+            compIndex++;
+        }
     }
 
     private void DrawTargetPanel(SpriteBatch spriteBatch, Character target)
@@ -97,14 +103,14 @@ public class Hud
 
         // Target Info text
         Vector2 namePos = panelPos + new Vector2(15, 12);
-        string nameStr = $"{target.Name.ToUpper()}  LVL {target.Level}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, nameStr, namePos, Color.OrangeRed, 0.9f);
+        string nameStr = $"{target.Name}  Lv.{target.Level}";
+        FontManager.DrawString(spriteBatch, nameStr, namePos, Color.OrangeRed, 0.75f);
 
         // HP Bar
         Vector2 hpPos = namePos + new Vector2(0, 18);
         DrawStatusBar(spriteBatch, hpPos, 160, 10, target.CurrentHP, target.MaxHP, Color.Crimson, "HP");
         string hpStr = $"{target.CurrentHP}/{target.MaxHP}";
-        SimpleFont.DrawString(spriteBatch, _whitePixel, hpStr, hpPos + new Vector2(170, 0), Color.LightGray, 0.7f);
+        FontManager.DrawString(spriteBatch, hpStr, hpPos + new Vector2(170, 0), Color.LightGray, 0.65f);
     }
 
     private void DrawStatusBar(SpriteBatch sb, Vector2 pos, int width, int height, int current, int max, Color color, string prefix)
@@ -113,8 +119,8 @@ public class Hud
         float textOffset = 0f;
         if (!string.IsNullOrEmpty(prefix))
         {
-            SimpleFont.DrawString(sb, _whitePixel, prefix, pos, color, 0.7f);
-            textOffset = 18f;
+            FontManager.DrawString(sb, prefix, pos, color, 0.65f);
+            textOffset = FontManager.MeasureString(prefix, 0.65f).X + 4f;
         }
 
         Vector2 barPos = pos + new Vector2(textOffset, 0f);
@@ -135,6 +141,19 @@ public class Hud
             new Rectangle((int)barPos.X, (int)barPos.Y, fillW, height),
             color
         );
+    }
+
+    private string GetKoreanState(CompanionState state)
+    {
+        return state switch
+        {
+            CompanionState.Idle => "대기",
+            CompanionState.FollowPlayer => "따라가기",
+            CompanionState.AssistAttack => "전투중",
+            CompanionState.Retreat => "후퇴",
+            CompanionState.Dead => "사망",
+            _ => "알 수 없음",
+        };
     }
 
     private void DrawOutline(SpriteBatch sb, Rectangle rect, Color color, int thickness)

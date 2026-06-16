@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using KingdomOfDarkness.Data;
 
 namespace KingdomOfDarkness.Entities;
 
@@ -19,19 +20,31 @@ public class Monster : Character
     public float RespawnCooldownRemaining { get; set; } = 0f;
     private Vector2 _spawnPosition;
 
-    public Monster(Texture2D whitePixel, Vector2 startWorldPosition)
+    public string MonsterTypeId { get; set; }
+
+    public Monster(Texture2D whitePixel, Vector2 startWorldPosition, string monsterTypeId, MonsterData data)
         : base(
             whitePixel,
-            "Goblin",
-            50,  // MaxHP
-            8,   // AttackPower
-            1,   // Defense
-            2.0f // MoveSpeed
+            data.Name,
+            new CharacterClassData
+            {
+                BaseHP = data.MaxHP,
+                BaseMP = 0,
+                BaseAttack = data.AttackPower,
+                BaseDefense = data.Defense,
+                BaseMoveSpeed = data.MoveSpeed,
+                BaseAttackRange = data.AttackRange,
+                DebugColor = data.DebugColor
+            }
         )
     {
         WorldPosition = startWorldPosition;
         _spawnPosition = startWorldPosition;
-        DebugColor = Color.OrangeRed; // Hostile orange-red color
+        MonsterTypeId = monsterTypeId;
+        ExperienceReward = data.ExperienceReward;
+        AggroRange = data.AggroRange;
+        AttackRange = data.AttackRange;
+        DebugColor = data.DebugColor;
     }
 
     public override void Update(GameTime gameTime)

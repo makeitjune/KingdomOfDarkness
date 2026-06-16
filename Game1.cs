@@ -7,11 +7,18 @@ using KingdomOfDarkness.World;
 using KingdomOfDarkness.Entities;
 using KingdomOfDarkness.Systems;
 using KingdomOfDarkness.UI;
+using KingdomOfDarkness.Data;
 
 namespace KingdomOfDarkness;
 
 public class Game1 : Game
 {
+    // State
+    private GameStateType _currentState = GameStateType.ClassSelect;
+    private ClassSelectScreen _classSelectScreen;
+    private CompanionInfoPanel _companionInfoPanel;
+
+    // Graphics
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
@@ -19,14 +26,23 @@ public class Game1 : Game
     private InputManager _inputManager;
     private Camera2D _camera;
 
-    // World Map
-    private IsoTileMap _tileMap;
-    private CollisionMap _collisionMap;
+    // Maps
+    private MapType _currentMapType;
+    private IsoTileMap _townMap;
+    private CollisionMap _townCollisionMap;
+    private IsoTileMap _huntingMap;
+    private CollisionMap _huntingCollisionMap;
+    
+    private IsoTileMap _currentTileMap;
+    private CollisionMap _currentCollisionMap;
+
+    // Portals
+    private List<Portal> _portals;
 
     // Entities
     private Texture2D _whitePixel;
     private Player _player;
-    private Companion _companion;
+    private List<Companion> _companions;
     private List<Monster> _monsters;
     private List<Entity> _entities;
     
@@ -34,6 +50,7 @@ public class Game1 : Game
     private IsoMovementSystem _movementSystem;
     private CompanionAISystem _companionAISystem;
     private MonsterAISystem _monsterAISystem;
+    private MonsterSpawnSystem _monsterSpawnSystem;
     private CombatSystem _combatSystem;
     private LevelSystem _levelSystem;
     private DialogueReactionSystem _dialogueReactionSystem;
@@ -41,29 +58,37 @@ public class Game1 : Game
 
     // UI
     private Hud _hud;
+    private DamagePopupManager _damagePopupManager;
 
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
-
-        // Set screen resolution from constants
-        _graphics.PreferredBackBufferWidth = GameConstants.ScreenWidth;
-        _graphics.PreferredBackBufferHeight = GameConstants.ScreenHeight;
-        _graphics.ApplyChanges();
     }
 
     protected override void Initialize()
     {
-        // Instantiate core logical systems
+        // Set Fullscreen borderless window
+        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+        _graphics.IsFullScreen = true;
+        _graphics.HardwareModeSwitch = false;
+        _graphics.ApplyChanges();
+
+        // Update GameConstants to match new resolution
+        GameConstants.ScreenWidth = _graphics.PreferredBackBufferWidth;
+        GameConstants.ScreenHeight = _graphics.PreferredBackBufferHeight;
+
         _inputManager = new InputManager();
         _camera = new Camera2D(GameConstants.ScreenWidth, GameConstants.ScreenHeight);
+        
         _movementSystem = new IsoMovementSystem();
         _companionAISystem = new CompanionAISystem();
         _monsterAISystem = new MonsterAISystem();
         _levelSystem = new LevelSystem();
-        _combatSystem = new CombatSystem(_levelSystem);
+        _damagePopupManager = new DamagePopupManager();
+        _combatSystem = new CombatSystem(_levelSystem, _damagePopupManager);
         _dialogueReactionSystem = new DialogueReactionSystem();
         _renderOrderSystem = new RenderOrderSystem();
 
@@ -74,40 +99,121 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+        // Load Korean-capable SpriteFont
+        FontManager.LoadContent(Content);
+
         // Generate white 1x1 texture for simple primitives
         _whitePixel = new Texture2D(GraphicsDevice, 1, 1);
         _whitePixel.SetData(new[] { Color.White });
 
-        // Instantiate map after GraphicsDevice is initialized
-        _tileMap = new IsoTileMap(GraphicsDevice, 20, 20);
+        // Initialize Data
+        ClassDatabase.Initialize();
 
-        // Instantiate collision map
-        _collisionMap = new CollisionMap(_tileMap);
+        // Instantiate maps
+        _townMap = new IsoTileMap(GraphicsDevice, 30, 30);
+        _townCollisionMap = new CollisionMap(_townMap);
 
-        // Instantiate player at map center
-        _player = new Player(_whitePixel, new Vector2(10f, 10f));
-
-        // Instantiate companion near player
-        _companion = new Companion(_whitePixel, _player.WorldPosition + new Vector2(-1f, 1f));
-
-        // Instantiate monsters (placed closer to player so they are visible on screen immediately)
-        _monsters = new List<Monster>
-        {
-            new Monster(_whitePixel, new Vector2(11.5f, 9.5f))
-        };
-
-        // Instantiate entity list and add characters
-        _entities = new List<Entity> { _player, _companion };
-        foreach (var monster in _monsters)
-        {
-            _entities.Add(monster);
-        }
+        _huntingMap = new IsoTileMap(GraphicsDevice, 50, 50);
+        _huntingCollisionMap = new CollisionMap(_huntingMap);
 
         // Instantiate UI
         _hud = new Hud(_whitePixel);
+        _classSelectScreen = new ClassSelectScreen(_whitePixel);
+        _companionInfoPanel = new CompanionInfoPanel(_whitePixel);
+    }
 
-        // Position camera to look at the player immediately
+    private void StartGame(CharacterClassType selectedClass)
+    {
+        // Instantiate player at map center with selected class
+        _player = new Player(_whitePixel, new Vector2(10f, 10f), selectedClass);
+
+        // Instantiate companions in town
+        _companions = new List<Companion>
+        {
+            new Companion(_whitePixel, new Vector2(12f, 10f), "아리아", CharacterClassType.Priest),
+            new Companion(_whitePixel, new Vector2(10f, 12f), "엘리스", CharacterClassType.Mage),
+            new Companion(_whitePixel, new Vector2(12f, 12f), "카일", CharacterClassType.Rogue)
+        };
+
+        foreach (var c in _companions) c.IsRecruited = false;
+
+        // Create Portals
+        _portals = new List<Portal>
+        {
+            // Town -> Hunting Ground (Portal located at Town 25, 25)
+            new Portal(_whitePixel, new Vector2(25f, 25f), MapType.HuntingGround, new Vector2(5f, 5f), Color.Blue),
+            // Hunting Ground -> Town (Portal located at Hunting Ground 4, 4)
+            new Portal(_whitePixel, new Vector2(4f, 4f), MapType.Town, new Vector2(24f, 25f), Color.Green)
+        };
+
+        // Initialize Monster Spawn System (only for Hunting Ground)
+        _monsters = new List<Monster>();
+        _monsterSpawnSystem = new MonsterSpawnSystem(_whitePixel, _huntingMap);
+        _monsterSpawnSystem.PopulateMap(_monsters, new List<Entity>()); // We'll pass recruited entities dynamically
+
+        // Set initial map
+        SwitchMap(MapType.Town, _player.WorldPosition);
+
+        _currentState = GameStateType.Playing;
+    }
+
+    private void SwitchMap(MapType mapType, Vector2 spawnPosition)
+    {
+        _currentMapType = mapType;
+        _player.WorldPosition = spawnPosition;
         _camera.LookAt(_player.WorldPosition);
+
+        // Teleport recruited companions around player
+        var recruitedCompanions = new List<Companion>();
+        foreach (var c in _companions)
+        {
+            if (c.IsRecruited)
+            {
+                c.WorldPosition = spawnPosition + new Vector2(-1f, 1f); // Simple offset
+                recruitedCompanions.Add(c);
+            }
+        }
+
+        // Set active map references
+        if (mapType == MapType.Town)
+        {
+            _currentTileMap = _townMap;
+            _currentCollisionMap = _townCollisionMap;
+        }
+        else
+        {
+            _currentTileMap = _huntingMap;
+            _currentCollisionMap = _huntingCollisionMap;
+        }
+
+        // Rebuild _entities list for the current map
+        _entities = new List<Entity> { _player };
+        
+        // Add companions (in Town, show all; in Hunting, show only recruited)
+        foreach (var c in _companions)
+        {
+            if (mapType == MapType.Town || c.IsRecruited)
+            {
+                _entities.Add(c);
+            }
+        }
+
+        // Add portals for this map
+        foreach (var p in _portals)
+        {
+            // If we are in Town, add portals targeting HuntingGround, etc.
+            if ((mapType == MapType.Town && p.TargetMapType == MapType.HuntingGround) ||
+                (mapType == MapType.HuntingGround && p.TargetMapType == MapType.Town))
+            {
+                _entities.Add(p);
+            }
+        }
+
+        // Add monsters if in hunting ground
+        if (mapType == MapType.HuntingGround)
+        {
+            foreach (var m in _monsters) _entities.Add(m);
+        }
     }
 
     protected override void Update(GameTime gameTime)
@@ -122,33 +228,106 @@ public class Game1 : Game
         // Update inputs
         _inputManager.Update();
 
+        if (_currentState == GameStateType.ClassSelect)
+        {
+            var selectedClass = _classSelectScreen.Update(_inputManager);
+            if (selectedClass.HasValue)
+            {
+                StartGame(selectedClass.Value);
+            }
+            return;
+        }
+
+        if (_currentState != GameStateType.Playing) return;
+
+        // --- MOUSE PICKING (Recruitment) ---
+        // 1. If companion info panel is open, update it and skip other interactions
+        if (_companionInfoPanel.Update(_inputManager))
+        {
+            // Handled a click inside the panel (e.g. recruit accepted)
+        }
+        else if (_inputManager.IsLeftMouseClicked())
+        {
+            // 2. Check if player clicked on an unrecruited companion
+            Vector2 mouseWorldPos = _camera.ScreenToWorld(_inputManager.MousePosition);
+            
+            foreach (var companion in _companions)
+            {
+                if (!companion.IsRecruited && !companion.IsDead)
+                {
+                    // Basic distance check (picking radius ~ 1.5 world units)
+                    float dist = Vector2.Distance(mouseWorldPos, companion.WorldPosition);
+                    if (dist < 1.5f)
+                    {
+                        _companionInfoPanel.Open(companion);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- FILTER RECRUITED COMPANIONS ---
+        var recruitedCompanions = new List<Companion>();
+        foreach (var c in _companions)
+        {
+            if (c.IsRecruited) recruitedCompanions.Add(c);
+        }
+
         // Update Player Input and Physics
         _player.UpdateInput(_inputManager);
-        _movementSystem.Update(gameTime, _player, _collisionMap);
+        _movementSystem.Update(gameTime, _player, _currentCollisionMap);
         _player.Update(gameTime);
+
+        // Check Portal collision
+        foreach (var p in _portals)
+        {
+            // Only check portals active in current map
+            if ((_currentMapType == MapType.Town && p.TargetMapType == MapType.HuntingGround) ||
+                (_currentMapType == MapType.HuntingGround && p.TargetMapType == MapType.Town))
+            {
+                if (Vector2.Distance(_player.WorldPosition, p.WorldPosition) < 1.0f)
+                {
+                    SwitchMap(p.TargetMapType, p.TargetSpawnPosition);
+                    return; // Stop update for this frame since map changed
+                }
+            }
+        }
 
         // Update Dialogue reaction system cooldowns
         _dialogueReactionSystem.Update(gameTime);
 
         // Update Companion AI, Speech Bubble, and Physics
-        _companionAISystem.Update(gameTime, _companion, _player, _dialogueReactionSystem);
-        _movementSystem.Update(gameTime, _companion, _collisionMap);
-        _companion.Update(gameTime);
-        _companion.Bubble.Update(gameTime);
-
-        // Update Monsters AI and Physics
-        foreach (var monster in _monsters)
+        foreach (var companion in _companions)
         {
-            _monsterAISystem.Update(gameTime, monster, _player, _companion);
-            _movementSystem.Update(gameTime, monster, _collisionMap);
-            monster.Update(gameTime);
+            if (_currentMapType == MapType.HuntingGround && !companion.IsRecruited) continue;
 
-            // Update targeted status
-            monster.IsTargeted = (_player.Target == monster);
+            _companionAISystem.Update(gameTime, companion, _player, _dialogueReactionSystem);
+            // Only update physics and bubble if recruited, else they just stand there
+            if (companion.IsRecruited)
+            {
+                _movementSystem.Update(gameTime, companion, _currentCollisionMap);
+            }
+            companion.Update(gameTime);
+            companion.Bubble.Update(gameTime);
         }
 
-        // Update Combat interactions (handles cooldowns, damage, and rewards)
-        _combatSystem.Update(gameTime, _player, _companion, _monsters, _inputManager.IsAttackRequested, _dialogueReactionSystem);
+        // Update Monsters (only in Hunting Ground)
+        if (_currentMapType == MapType.HuntingGround)
+        {
+            _monsterSpawnSystem.Update(gameTime, _monsters);
+
+            foreach (var monster in _monsters)
+            {
+                _monsterAISystem.Update(gameTime, monster, _player, recruitedCompanions);
+                _movementSystem.Update(gameTime, monster, _currentCollisionMap);
+                monster.Update(gameTime);
+
+                monster.IsTargeted = (_player.Target == monster);
+            }
+
+            _combatSystem.Update(gameTime, _player, recruitedCompanions, _monsters, _inputManager.IsAttackRequested, _dialogueReactionSystem);
+            _damagePopupManager.Update(gameTime);
+        }
 
         // Camera follow player in world-screen space
         Vector2 targetScreenPos = IsoMath.WorldToScreen(_player.WorldPosition);
@@ -161,20 +340,52 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(new Color(20, 24, 28)); // Sleek dark gray background
 
-        _spriteBatch.Begin();
+        Matrix scaleMatrix = Matrix.CreateScale(GameConstants.RenderScale);
+
+        if (_currentState == GameStateType.ClassSelect)
+        {
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
+            _classSelectScreen.Draw(_spriteBatch);
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        if (_currentState != GameStateType.Playing)
+        {
+            base.Draw(gameTime);
+            return;
+        }
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
         
         // Draw isometric map
-        _tileMap.Draw(_spriteBatch, _camera);
+        _currentTileMap.Draw(_spriteBatch, _camera);
 
         // Draw entities in depth-sorted order
         _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
 
         // Draw speech bubbles above characters (after entities are drawn)
-        _companion.Bubble.Draw(_spriteBatch, _camera, _companion, _whitePixel);
+        foreach (var companion in _companions)
+        {
+            if (_currentMapType == MapType.HuntingGround && !companion.IsRecruited) continue;
+            companion.Bubble.Draw(_spriteBatch, _camera, companion, _whitePixel);
+        }
 
+        // Draw damage popups (above entities, below HUD)
+        if (_currentMapType == MapType.HuntingGround)
+        {
+            _damagePopupManager.Draw(_spriteBatch, _camera);
+        }
+
+        _spriteBatch.End();
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
         // Draw HUD overlay on top of everything
-        _hud.Draw(_spriteBatch, _player, _companion, _whitePixel);
+        _hud.Draw(_spriteBatch, _player, _companions, _whitePixel);
 
+        // Draw Companion Info Panel if open
+        _companionInfoPanel.Draw(_spriteBatch);
         _spriteBatch.End();
 
         base.Draw(gameTime);

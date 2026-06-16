@@ -16,7 +16,8 @@ public class Camera2D
 
     public Camera2D(int screenWidth, int screenHeight)
     {
-        ScreenCenter = new Vector2(screenWidth / 2f, screenHeight / 2f);
+        // Divide by RenderScale so the camera center matches the scaled display
+        ScreenCenter = new Vector2(screenWidth / 2f, screenHeight / 2f) / GameConstants.RenderScale;
         Position = Vector2.Zero;
     }
 
@@ -43,5 +44,20 @@ public class Camera2D
     public void LookAt(Vector2 targetWorldPosition)
     {
         Position = IsoMath.WorldToScreen(targetWorldPosition);
+    }
+
+    /// <summary>
+    /// Transforms screen position (e.g., mouse) to world position.
+    /// </summary>
+    public Vector2 ScreenToWorld(Vector2 screenPosition)
+    {
+        // Adjust mouse screen position by render scale
+        Vector2 scaledScreenPos = screenPosition / GameConstants.RenderScale;
+
+        // 1. Convert screen position to camera-adjusted screen position
+        Vector2 cameraAdjustedScreenPos = scaledScreenPos + Position - ScreenCenter;
+        
+        // 2. Convert to world coordinates
+        return IsoMath.ScreenToWorldApprox(cameraAdjustedScreenPos);
     }
 }

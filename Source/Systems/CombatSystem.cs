@@ -2,19 +2,22 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using KingdomOfDarkness.Entities;
+using KingdomOfDarkness.UI;
 
 namespace KingdomOfDarkness.Systems;
 
 public class CombatSystem
 {
     private readonly LevelSystem _levelSystem;
+    private readonly DamagePopupManager _damagePopupManager;
 
-    public CombatSystem(LevelSystem levelSystem)
+    public CombatSystem(LevelSystem levelSystem, DamagePopupManager damagePopupManager)
     {
         _levelSystem = levelSystem;
+        _damagePopupManager = damagePopupManager;
     }
 
-    public void Update(GameTime gameTime, Player player, Companion companion, List<Monster> monsters, bool attackRequested, DialogueReactionSystem dialogueSystem)
+    public void Update(GameTime gameTime, Player player, List<Companion> companions, List<Monster> monsters, bool attackRequested, DialogueReactionSystem dialogueSystem)
     {
         // 1. Target selection: If player has no target or target is dead, select the nearest alive monster
         if (player.Target == null || player.Target.IsDead)
@@ -23,9 +26,12 @@ public class CombatSystem
         }
 
         // 2. Companion targets same monster as player if assisting
-        if (companion.State == CompanionState.AssistAttack)
+        foreach (var companion in companions)
         {
-            companion.Target = player.Target;
+            if (companion.State == CompanionState.AssistAttack)
+            {
+                companion.Target = player.Target;
+            }
         }
 
         // 3. Process Player attacks
@@ -34,14 +40,17 @@ public class CombatSystem
             // Player attacks when Space (attackRequested) is pressed/held AND within range
             if (attackRequested)
             {
-                TryAttack(player, player.Target, player, companion, dialogueSystem);
+                TryAttack(player, player.Target, player, companions, dialogueSystem);
             }
         }
 
         // 4. Process Companion attacks (attacks automatically if state is AssistAttack and target is in range)
-        if (companion.Target != null && !companion.Target.IsDead && companion.State == CompanionState.AssistAttack)
+        foreach (var companion in companions)
         {
-            TryAttack(companion, companion.Target, player, companion, dialogueSystem);
+            if (companion.Target != null && !companion.Target.IsDead && companion.State == CompanionState.AssistAttack)
+            {
+                TryAttack(companion, companion.Target, player, companions, dialogueSystem);
+            }
         }
 
         // 5. Process Monster attacks (attacks target player/companion automatically when in range)
@@ -49,7 +58,7 @@ public class CombatSystem
         {
             if (monster.Target != null && !monster.Target.IsDead && monster.State == MonsterState.Attack)
             {
-                TryAttack(monster, monster.Target, player, companion, dialogueSystem);
+                TryAttack(monster, monster.Target, player, companions, dialogueSystem);
             }
         }
     }
@@ -74,7 +83,7 @@ public class CombatSystem
         return closest;
     }
 
-    private void TryAttack(Character attacker, Character target, Player player, Companion companion, DialogueReactionSystem dialogueSystem)
+    private void TryAttack(Character attacker, Character target, Player player, List<Companion> companions, DialogueReactionSystem dialogueSystem)
     {
         if (attacker == null || target == null || attacker.IsDead || target.IsDead) return;
 
@@ -90,6 +99,9 @@ public class CombatSystem
             // Reset cooldown
             attacker.AttackCooldownRemaining = attacker.AttackCooldownSeconds;
 
+            // Spawn damage popup
+            _damagePopupManager.Spawn(target.WorldPosition, damage);
+
             // Check for death
             if (target.IsDead)
             {
@@ -101,11 +113,17 @@ public class CombatSystem
                     player.Experience += monster.ExperienceReward;
                     _levelSystem.CheckLevelUp(player);
 
-                    companion.Experience += monster.ExperienceReward;
-                    _levelSystem.CheckLevelUp(companion);
+                    foreach (var comp in companions)
+                    {
+                        if (!comp.IsDead)
+                        {
+                            comp.Experience += monster.ExperienceReward;
+                            _levelSystem.CheckLevelUp(comp);
 
-                    // Trigger dialogue reaction on kill
-                    dialogueSystem.TriggerReaction(companion, companion.Bubble, DialogueEvent.KillMonster);
+                            // Trigger dialogue reaction on kill
+                            dialogueSystem.TriggerReaction(comp, comp.Bubble, DialogueEvent.KillMonster);
+                        }
+                    }
                 }
             }
         }

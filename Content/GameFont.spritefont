@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This file contains a SpriteFont definition with Korean (Hangul) support.
+Font: Malgun Gothic (맑은 고딕) - standard Windows Korean font.
+Character ranges: ASCII + Hangul Syllables (AC00-D7A3)
+-->
+<XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
+  <Asset Type="Graphics:FontDescription">
+
+    <!--
+    The name of the font to import. This must be a font installed on your system.
+    맑은 고딕 (Malgun Gothic) is available on all modern Windows systems.
+    -->
+    <FontName>Malgun Gothic</FontName>
+
+    <!--
+    Size of the font in points.
+    -->
+    <Size>14</Size>
+
+    <!--
+    Spacing between characters.
+    -->
+    <Spacing>0</Spacing>
+
+    <!--
+    Antialiasing hint: ClearType for best quality on LCD displays.
+    -->
+    <UseKerning>true</UseKerning>
+
+    <!--
+    Font style: Regular, Bold, Italic
+    -->
+    <Style>Regular</Style>
+
+    <!--
+    Default character used when drawing strings with unknown characters.
+    -->
+    <DefaultCharacter>*</DefaultCharacter>
+
+    <!--
+    Character regions define which characters are available in the font.
+    -->
+    <CharacterRegions>
+      <!-- ASCII printable characters (space through tilde) -->
+      <CharacterRegion>
+        <Start>&#32;</Start>
+        <End>&#126;</End>
+      </CharacterRegion>
+      <!-- Korean Hangul Syllables (가 through 힣) -->
+      <CharacterRegion>
+        <Start>&#xAC00;</Start>
+        <End>&#xD7A3;</End>
+      </CharacterRegion>
+      <!-- Korean punctuation and symbols commonly used -->
+      <CharacterRegion>
+        <Start>&#x2026;</Start>
+        <End>&#x2026;</End>
+      </CharacterRegion>
+    </CharacterRegions>
+
+  </Asset>
+</XnaContent>

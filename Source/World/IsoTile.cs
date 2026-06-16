@@ -4,7 +4,10 @@ namespace KingdomOfDarkness.World;
 
 public enum TileType
 {
-    Ground,
+    Grass,
+    Dirt,
+    Stone,
+    Sand,
     Blocked,
     Water
 }
@@ -17,19 +20,36 @@ public class IsoTile
     public bool IsBlocked => Type == TileType.Blocked || Type == TileType.Water;
     public Color DebugColor { get; set; }
 
-    public IsoTile(int x, int y, TileType type = TileType.Ground)
+    public IsoTile(int x, int y, TileType type = TileType.Grass)
     {
         X = x;
         Y = y;
         Type = type;
         
-        // Default color variation to look nice
-        if (type == TileType.Blocked)
-            DebugColor = new Color(70, 70, 70); // Dark gray
-        else if (type == TileType.Water)
-            DebugColor = new Color(30, 80, 150); // Deep blue
-        else
-            // Checkerboard color pattern for ground
-            DebugColor = ((x + y) % 2 == 0) ? new Color(34, 139, 34) : new Color(46, 139, 87); // Forest green / Sea green
+        // Setup initial default color based on type
+        switch (Type)
+        {
+            case TileType.Water:
+                DebugColor = new Color(50, 100, 200); // Blueish water
+                break;
+            case TileType.Blocked:
+                DebugColor = new Color(100, 100, 100); // Gray stone wall
+                break;
+            case TileType.Dirt:
+                DebugColor = new Color(120, 80, 50); // Brown dirt
+                break;
+            case TileType.Stone:
+                DebugColor = new Color(150, 150, 150); // Light gray stone path
+                break;
+            case TileType.Sand:
+                DebugColor = new Color(200, 180, 120); // Yellowish sand
+                break;
+            case TileType.Grass:
+            default:
+                // Checkerboard pattern for grass ground
+                bool isEven = (x + y) % 2 == 0;
+                DebugColor = isEven ? new Color(60, 120, 60) : new Color(50, 110, 50);
+                break;
+        }
     }
 }

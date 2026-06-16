@@ -12,12 +12,35 @@ public class CompanionAISystem
 
     public void Update(GameTime gameTime, Companion companion, Player player, DialogueReactionSystem dialogueSystem)
     {
-        if (companion == null || companion.IsDead)
+        if (companion == null || player == null) return;
+
+        // If not recruited, do nothing (stay idle where they spawned)
+        if (!companion.IsRecruited)
         {
-            if (companion != null)
+            companion.MovementIntent = Vector2.Zero;
+            return;
+        }
+
+        if (companion.IsDead)
+        {
+            companion.State = CompanionState.Dead;
+            companion.MovementIntent = Vector2.Zero;
+
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (companion.RespawnCooldownRemaining <= 0f)
             {
-                companion.State = CompanionState.Dead;
-                companion.Velocity = Vector2.Zero;
+                companion.RespawnCooldownRemaining = 5.0f; // 5 seconds respawn
+            }
+            else
+            {
+                companion.RespawnCooldownRemaining -= dt;
+                if (companion.RespawnCooldownRemaining <= 0f)
+                {
+                    // Respawn near player
+                    companion.CurrentHP = companion.MaxHP;
+                    companion.WorldPosition = player.WorldPosition + new Vector2(-1f, 1f);
+                    companion.State = CompanionState.Idle;
+                }
             }
             return;
         }
@@ -60,11 +83,11 @@ public class CompanionAISystem
             companion.State = CompanionState.Idle;
         }
 
-        // State Behaviors
+    // State Behaviors
         switch (companion.State)
         {
             case CompanionState.Idle:
-                companion.Velocity = Vector2.Zero;
+                companion.MovementIntent = Vector2.Zero;
                 // If player moves too far again, transition back to follow
                 if (distToPlayer > ComfortMaxDistance)
                 {
@@ -74,19 +97,17 @@ public class CompanionAISystem
 
             case CompanionState.FollowPlayer:
                 // Move towards formation offset (slightly behind the player)
-                Vector2 formationOffset = new Vector2(-0.8f, 0.8f);
+                Vector2 formationOffset = new Vector2(-1f, 1f); // integer offset
                 Vector2 targetPos = player.WorldPosition + formationOffset;
                 float distToTarget = Vector2.Distance(companion.WorldPosition, targetPos);
 
-                if (distToTarget > 0.15f)
+                if (distToTarget > 1.0f) // Threshold is 1 tile
                 {
-                    Vector2 dir = targetPos - companion.WorldPosition;
-                    dir.Normalize();
-                    companion.Velocity = dir * companion.MoveSpeed;
+                    companion.MovementIntent = GetGridIntent(targetPos - companion.WorldPosition);
                 }
                 else
                 {
-                    companion.Velocity = Vector2.Zero;
+                    companion.MovementIntent = Vector2.Zero;
                     companion.State = CompanionState.Idle;
                 }
                 break;
@@ -103,14 +124,12 @@ public class CompanionAISystem
                 float distToMonster = Vector2.Distance(companion.WorldPosition, companion.Target.WorldPosition);
                 if (distToMonster > companion.AttackRange)
                 {
-                    Vector2 dirToMonster = companion.Target.WorldPosition - companion.WorldPosition;
-                    dirToMonster.Normalize();
-                    companion.Velocity = dirToMonster * companion.MoveSpeed;
+                    companion.MovementIntent = GetGridIntent(companion.Target.WorldPosition - companion.WorldPosition);
                 }
                 else
                 {
                     // In range: stop and wait to attack (handled by CombatSystem)
-                    companion.Velocity = Vector2.Zero;
+                    companion.MovementIntent = Vector2.Zero;
                 }
                 break;
 
@@ -127,10 +146,9 @@ public class CompanionAISystem
                 if (threat != null && !threat.IsDead)
                 {
                     Vector2 runDir = companion.WorldPosition - threat.WorldPosition;
-                    if (runDir.LengthSquared() > 0.001f)
+                    if (runDir.LengthSquared() > 0.1f)
                     {
-                        runDir.Normalize();
-                        companion.Velocity = runDir * companion.MoveSpeed;
+                        companion.MovementIntent = GetGridIntent(runDir);
                     }
                 }
                 else
@@ -138,20 +156,32 @@ public class CompanionAISystem
                     // If no threat, run towards player but keep distance
                     if (distToPlayer > ComfortMinDistance)
                     {
-                        Vector2 dirToPlayer = player.WorldPosition - companion.WorldPosition;
-                        dirToPlayer.Normalize();
-                        companion.Velocity = dirToPlayer * companion.MoveSpeed;
+                        companion.MovementIntent = GetGridIntent(player.WorldPosition - companion.WorldPosition);
                     }
                     else
                     {
-                        companion.Velocity = Vector2.Zero;
+                        companion.MovementIntent = Vector2.Zero;
                     }
                 }
                 break;
 
             case CompanionState.Dead:
-                companion.Velocity = Vector2.Zero;
+                companion.MovementIntent = Vector2.Zero;
                 break;
+        }
+    }
+
+    private Vector2 GetGridIntent(Vector2 direction)
+    {
+        if (direction == Vector2.Zero) return Vector2.Zero;
+
+        if (System.Math.Abs(direction.X) > System.Math.Abs(direction.Y))
+        {
+            return new Vector2(System.Math.Sign(direction.X), 0);
+        }
+        else
+        {
+            return new Vector2(0, System.Math.Sign(direction.Y));
         }
     }
 }

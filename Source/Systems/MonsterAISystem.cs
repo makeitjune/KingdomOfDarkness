@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using KingdomOfDarkness.Entities;
 
@@ -5,32 +6,45 @@ namespace KingdomOfDarkness.Systems;
 
 public class MonsterAISystem
 {
-    public void Update(GameTime gameTime, Monster monster, Player player, Companion companion)
+    public void Update(GameTime gameTime, Monster monster, Player player, List<Companion> companions)
     {
         if (monster == null) return;
 
         if (monster.IsDead)
         {
             monster.State = MonsterState.Dead;
-            monster.Velocity = Vector2.Zero;
+            monster.MovementIntent = Vector2.Zero;
             monster.Target = null;
             return;
         }
 
         // Target selection: Target the nearest alive player-side character
         Character potentialTarget = null;
-        float distToPlayer = player.IsDead ? float.MaxValue : Vector2.Distance(monster.WorldPosition, player.WorldPosition);
-        float distToCompanion = companion.IsDead ? float.MaxValue : Vector2.Distance(monster.WorldPosition, companion.WorldPosition);
+        float minDist = float.MaxValue;
 
-        if (distToPlayer < distToCompanion)
+        // Check player
+        if (!player.IsDead)
         {
-            if (!player.IsDead && distToPlayer <= monster.AggroRange)
+            float dist = Vector2.Distance(monster.WorldPosition, player.WorldPosition);
+            if (dist <= monster.AggroRange && dist < minDist)
+            {
+                minDist = dist;
                 potentialTarget = player;
+            }
         }
-        else
+
+        // Check companions
+        foreach (var companion in companions)
         {
-            if (!companion.IsDead && distToCompanion <= monster.AggroRange)
-                potentialTarget = companion;
+            if (!companion.IsDead)
+            {
+                float dist = Vector2.Distance(monster.WorldPosition, companion.WorldPosition);
+                if (dist <= monster.AggroRange && dist < minDist)
+                {
+                    minDist = dist;
+                    potentialTarget = companion;
+                }
+            }
         }
 
         monster.Target = potentialTarget;
@@ -38,7 +52,7 @@ public class MonsterAISystem
         if (monster.Target == null)
         {
             monster.State = MonsterState.Idle;
-            monster.Velocity = Vector2.Zero;
+            monster.MovementIntent = Vector2.Zero;
             return;
         }
 
@@ -48,7 +62,7 @@ public class MonsterAISystem
         if (distance <= monster.AttackRange)
         {
             monster.State = MonsterState.Attack;
-            monster.Velocity = Vector2.Zero;
+            monster.MovementIntent = Vector2.Zero;
         }
         else
         {
@@ -56,13 +70,26 @@ public class MonsterAISystem
             Vector2 dir = monster.Target.WorldPosition - monster.WorldPosition;
             if (dir.LengthSquared() > 0.001f)
             {
-                dir.Normalize();
-                monster.Velocity = dir * monster.MoveSpeed;
+                monster.MovementIntent = GetGridIntent(dir);
             }
             else
             {
-                monster.Velocity = Vector2.Zero;
+                monster.MovementIntent = Vector2.Zero;
             }
+        }
+    }
+
+    private Vector2 GetGridIntent(Vector2 direction)
+    {
+        if (direction == Vector2.Zero) return Vector2.Zero;
+
+        if (System.Math.Abs(direction.X) > System.Math.Abs(direction.Y))
+        {
+            return new Vector2(System.Math.Sign(direction.X), 0);
+        }
+        else
+        {
+            return new Vector2(0, System.Math.Sign(direction.Y));
         }
     }
 }

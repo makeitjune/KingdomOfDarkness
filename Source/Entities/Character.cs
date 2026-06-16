@@ -2,17 +2,21 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using KingdomOfDarkness.Core;
 using KingdomOfDarkness.UI;
+using KingdomOfDarkness.Data;
 
 namespace KingdomOfDarkness.Entities;
 
 public abstract class Character : Entity
 {
     public string Name { get; set; }
+    public CharacterClassType ClassType { get; set; }
     
     // Stats
     public int Level { get; set; } = 1;
     public int CurrentHP { get; set; }
     public int MaxHP { get; set; }
+    public int CurrentMP { get; set; }
+    public int MaxMP { get; set; }
     public int AttackPower { get; set; }
     public int Defense { get; set; }
     public float AttackRange { get; set; } = 1.2f; // world units
@@ -22,9 +26,10 @@ public abstract class Character : Entity
     
     public bool IsDead => CurrentHP <= 0;
 
-    // Movement
-    public Vector2 Velocity { get; set; }
-    public float MoveSpeed { get; set; }
+    // Movement (Grid Snapping)
+    public Vector2 MovementIntent { get; set; }
+    public float MoveSpeed { get; set; } // tiles per second
+    public float MoveCooldownRemaining { get; set; } = 0.0f;
 
     // Rendering Placeholder
     public Color DebugColor { get; set; } = Color.White;
@@ -34,27 +39,55 @@ public abstract class Character : Entity
     public Character Target { get; set; }
     public bool IsTargeted { get; set; } = false;
 
-    protected Character(Texture2D whitePixel, string name, int maxHp, int attackPower, int defense, float moveSpeed)
+    protected Character(Texture2D whitePixel, string name, CharacterClassData classData)
     {
         WhitePixelTexture = whitePixel;
         Name = name;
-        MaxHP = maxHp;
-        CurrentHP = maxHp;
-        AttackPower = attackPower;
-        Defense = defense;
-        MoveSpeed = moveSpeed;
+        ClassType = classData.ClassType;
+        
+        MaxHP = classData.BaseHP;
+        CurrentHP = MaxHP;
+        MaxMP = classData.BaseMP;
+        CurrentMP = MaxMP;
+        
+        AttackPower = classData.BaseAttack;
+        Defense = classData.BaseDefense;
+        MoveSpeed = classData.BaseMoveSpeed;
+        AttackRange = classData.BaseAttackRange;
+        DebugColor = classData.DebugColor;
     }
 
     public override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
 
+        // Update facing direction based on movement intent
+        if (MovementIntent.LengthSquared() > 0.01f)
+        {
+            if (System.Math.Abs(MovementIntent.X) >= System.Math.Abs(MovementIntent.Y))
+            {
+                Facing = MovementIntent.X >= 0 ? IsoDirection.SouthEast : IsoDirection.NorthWest;
+            }
+            else
+            {
+                Facing = MovementIntent.Y >= 0 ? IsoDirection.SouthWest : IsoDirection.NorthEast;
+            }
+        }
+
         // Tick attack cooldown
-        if (AttackCooldownRemaining > 0f)
+        if (AttackCooldownRemaining > 0)
         {
             AttackCooldownRemaining -= (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (AttackCooldownRemaining < 0f)
                 AttackCooldownRemaining = 0f;
+        }
+
+        // Tick move cooldown
+        if (MoveCooldownRemaining > 0)
+        {
+            MoveCooldownRemaining -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (MoveCooldownRemaining < 0f)
+                MoveCooldownRemaining = 0f;
         }
     }
 
@@ -97,11 +130,12 @@ public abstract class Character : Entity
 
     public override void Draw(SpriteBatch spriteBatch, Camera2D camera)
     {
-        if (IsDead) return;
 
         // Visual size of the character placeholder (e.g. 24px wide, 48px high)
         int charWidth = 24;
         int charHeight = 48;
+
+        float alpha = IsDead ? 0.4f : 1.0f;
 
         // Get screen position from world position (which corresponds to the feet/base)
         Vector2 screenPos = camera.WorldToCameraScreen(WorldPosition);
@@ -136,21 +170,55 @@ public abstract class Character : Entity
         spriteBatch.Draw(
             WhitePixelTexture,
             destRect,
-            DebugColor
+            DebugColor * alpha
         );
 
-        // 4. Draw name label above character
-        string nameUpper = Name.ToUpper();
+        // 3b. Draw facing direction indicator (small white dot on the facing side)
+        Vector2 indicatorPos = screenPos;
+        switch (Facing)
+        {
+            case IsoDirection.SouthEast: // screen down-right
+                indicatorPos = new Vector2(screenPos.X + charWidth / 2f + 2, screenPos.Y - charHeight / 2f);
+                break;
+            case IsoDirection.SouthWest: // screen down-left
+                indicatorPos = new Vector2(screenPos.X - charWidth / 2f - 5, screenPos.Y - charHeight / 2f);
+                break;
+            case IsoDirection.NorthWest: // screen up-left
+                indicatorPos = new Vector2(screenPos.X - charWidth / 2f - 5, screenPos.Y - charHeight / 2f - 8);
+                break;
+            case IsoDirection.NorthEast: // screen up-right
+                indicatorPos = new Vector2(screenPos.X + charWidth / 2f + 2, screenPos.Y - charHeight / 2f - 8);
+                break;
+        }
+        spriteBatch.Draw(
+            WhitePixelTexture,
+            new Rectangle((int)indicatorPos.X, (int)indicatorPos.Y, 3, 3),
+            Color.White * alpha
+        );
+
+        // 4. Draw name label above character (Korean-capable via FontManager)
+        string displayName = Name;
         float nameScale = 0.7f;
-        Vector2 nameSize = SimpleFont.MeasureString(nameUpper, nameScale);
+        Vector2 nameSize = FontManager.MeasureString(displayName, nameScale);
         Vector2 namePos = new Vector2(screenPos.X - nameSize.X / 2f, screenPos.Y - charHeight - 24f);
         
         Color labelColor = DebugColor;
         if (labelColor == Color.White) labelColor = Color.LightGray;
-        SimpleFont.DrawString(spriteBatch, WhitePixelTexture, nameUpper, namePos, labelColor, nameScale);
+        FontManager.DrawString(spriteBatch, displayName, namePos, labelColor * alpha, nameScale);
 
         // 5. Draw status health bar
-        DrawSimpleHealthBar(spriteBatch, screenPos, charHeight);
+        if (!IsDead)
+        {
+            DrawSimpleHealthBar(spriteBatch, screenPos, charHeight);
+        }
+        else
+        {
+            // Draw "사망" (DEAD) text instead of health bar
+            string deadText = "사망";
+            Vector2 deadSize = FontManager.MeasureString(deadText, 0.7f);
+            Vector2 deadPos = new Vector2(screenPos.X - deadSize.X / 2f, screenPos.Y - charHeight / 2f);
+            FontManager.DrawString(spriteBatch, deadText, deadPos, Color.Red, 0.7f);
+        }
     }
 
     private void DrawSimpleHealthBar(SpriteBatch spriteBatch, Vector2 feetScreenPos, int charHeight)

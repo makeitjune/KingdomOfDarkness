@@ -64,11 +64,11 @@ public class DialogueReactionSystem
     {
         return dialogueEvent switch
         {
-            DialogueEvent.CombatStart => "I WILL HELP YOU!",
-            DialogueEvent.LowHealth   => "STEPPING BACK...",
-            DialogueEvent.TooFar      => "WAIT FOR ME!",
-            DialogueEvent.KillMonster => "GOOD JOB!",
-            DialogueEvent.Blocked     => "EXCUSE ME...",
+            DialogueEvent.CombatStart => "제가 도와드릴게요!",
+            DialogueEvent.LowHealth   => "잠깐 뒤로 빠질게요...",
+            DialogueEvent.TooFar      => "같이 가요!",
+            DialogueEvent.KillMonster => "좋았어요!",
+            DialogueEvent.Blocked     => "비켜주세요...",
             _                         => string.Empty
         };
     }

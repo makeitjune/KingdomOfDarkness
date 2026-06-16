@@ -12,6 +12,7 @@ public abstract class Entity
     public Vector2 WorldPosition { get; set; }
     public bool IsActive { get; set; } = true;
     public int DrawOrder { get; set; }
+    public IsoDirection Facing { get; set; } = IsoDirection.SouthEast;
 
     protected Entity()
     {

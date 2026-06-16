@@ -10,48 +10,46 @@ public class IsoMovementSystem
     {
         if (character == null || character.IsDead) return;
 
-        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        // If cooldown is active, cannot move
+        if (character.MoveCooldownRemaining > 0f) return;
 
-        // Apply velocity to position
-        if (character.Velocity != Vector2.Zero)
+        if (character.MovementIntent != Vector2.Zero)
         {
-            Vector2 nextPosition = character.WorldPosition + character.Velocity * dt;
+            // Normalize just in case, though it should already be orthogonal
+            Vector2 intent = character.MovementIntent;
+            
+            // Strictly enforce single axis movement
+            if (System.Math.Abs(intent.X) > 0 && System.Math.Abs(intent.Y) > 0)
+            {
+                // Prefer X if both are somehow set
+                intent.Y = 0;
+            }
+
+            // Ensure magnitude is 1
+            if (intent.X > 0) intent.X = 1;
+            if (intent.X < 0) intent.X = -1;
+            if (intent.Y > 0) intent.Y = 1;
+            if (intent.Y < 0) intent.Y = -1;
+
+            Vector2 nextPosition = character.WorldPosition + intent;
 
             if (collisionMap != null)
             {
-                // Verify if full diagonal movement is clear
                 if (!collisionMap.IsBlocked(nextPosition.X, nextPosition.Y))
                 {
                     character.WorldPosition = nextPosition;
-                }
-                else
-                {
-                    // Slide check: try to move only along X-axis
-                    Vector2 nextX = character.WorldPosition + new Vector2(character.Velocity.X, 0f) * dt;
-                    if (!collisionMap.IsBlocked(nextX.X, nextX.Y))
-                    {
-                        character.WorldPosition = nextX;
-                    }
-                    else
-                    {
-                        // Slide check: try to move only along Y-axis
-                        Vector2 nextY = character.WorldPosition + new Vector2(0f, character.Velocity.Y) * dt;
-                        if (!collisionMap.IsBlocked(nextY.X, nextY.Y))
-                        {
-                            character.WorldPosition = nextY;
-                        }
-                        else
-                        {
-                            // Completely blocked: halt character velocity
-                            character.Velocity = Vector2.Zero;
-                        }
-                    }
+                    // Trigger cooldown. For example, MoveSpeed = 3.5 means 3.5 tiles per second, so cooldown = 1 / 3.5
+                    character.MoveCooldownRemaining = 1f / character.MoveSpeed;
                 }
             }
             else
             {
                 character.WorldPosition = nextPosition;
+                character.MoveCooldownRemaining = 1f / character.MoveSpeed;
             }
+
+            // Reset intent after applying
+            character.MovementIntent = Vector2.Zero;
         }
     }
 }

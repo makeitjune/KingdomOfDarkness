@@ -38,8 +38,8 @@ public class SpeechBubble
         Vector2 feetScreenPos = camera.WorldToCameraScreen(character.WorldPosition);
 
         // Measure text size
-        float fontScale = 0.9f;
-        Vector2 textSize = SimpleFont.MeasureString(Text, fontScale);
+        float fontScale = 0.8f;
+        Vector2 textSize = FontManager.MeasureString(Text, fontScale);
 
         // Bubble sizes with padding
         int paddingX = 8;
@@ -74,7 +74,7 @@ public class SpeechBubble
 
         // 4. Draw Text centered inside
         Vector2 textPos = bubblePos + new Vector2(paddingX, paddingY);
-        SimpleFont.DrawString(spriteBatch, whitePixel, Text, textPos, Color.White, fontScale);
+        FontManager.DrawString(spriteBatch, Text, textPos, Color.White, fontScale);
     }
 
     private void DrawOutline(SpriteBatch sb, Texture2D pixel, Rectangle rect, Color color, int thickness)

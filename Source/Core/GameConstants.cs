@@ -7,6 +7,9 @@ public static class GameConstants
     public const float DefaultPlayerMoveSpeed = 3.5f; // logical units per second
     
     // Screen settings
-    public const int ScreenWidth = 1024;
-    public const int ScreenHeight = 768;
+    public static int ScreenWidth = 1024;
+    public static int ScreenHeight = 768;
+    
+    // Pixel Art Scale
+    public const float RenderScale = 2.0f;
 }

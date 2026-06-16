@@ -1,34 +1,59 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using KingdomOfDarkness.Core;
+using KingdomOfDarkness.Data;
 
 namespace KingdomOfDarkness.Entities;
 
 public class Player : Character
 {
-    public Player(Texture2D whitePixel, Vector2 startWorldPosition)
+    private Vector2 _startPosition;
+    public float RespawnCooldownRemaining { get; set; } = 0f;
+
+    public Player(Texture2D whitePixel, Vector2 startWorldPosition, CharacterClassType classType)
         : base(
             whitePixel,
-            "Player",
-            100, // MaxHP
-            15,  // AttackPower
-            5,   // Defense
-            GameConstants.DefaultPlayerMoveSpeed
+            "아레스", // Player's name
+            ClassDatabase.GetClass(classType)
         )
     {
         WorldPosition = startWorldPosition;
-        DebugColor = Color.CornflowerBlue; // Blue-ish character placeholder
+        _startPosition = startWorldPosition;
+    }
+
+    public override void Update(GameTime gameTime)
+    {
+        base.Update(gameTime);
+
+        if (IsDead)
+        {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (RespawnCooldownRemaining <= 0f)
+            {
+                RespawnCooldownRemaining = 5.0f; // 5 seconds respawn
+            }
+            else
+            {
+                RespawnCooldownRemaining -= dt;
+                if (RespawnCooldownRemaining <= 0f)
+                {
+                    // Respawn
+                    CurrentHP = MaxHP / 2; // Respawn with 50% HP
+                    WorldPosition = _startPosition;
+                }
+            }
+        }
     }
 
     public void UpdateInput(InputManager inputManager)
     {
         if (IsDead)
         {
-            Velocity = Vector2.Zero;
+            MovementIntent = Vector2.Zero;
             return;
         }
 
-        // Set velocity based on input movement intent
-        Velocity = inputManager.MovementIntent * MoveSpeed;
+        // Set movement intent directly
+        MovementIntent = inputManager.MovementIntent;
     }
 }
