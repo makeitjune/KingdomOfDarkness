@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using KingdomOfDarkness.Core;
 using KingdomOfDarkness.World;
+using KingdomOfDarkness.Entities;
+using KingdomOfDarkness.Systems;
 
 namespace KingdomOfDarkness;
 
@@ -17,6 +19,11 @@ public class Game1 : Game
 
     // World Map
     private IsoTileMap _tileMap;
+
+    // Entities & Systems
+    private Texture2D _whitePixel;
+    private Player _player;
+    private IsoMovementSystem _movementSystem;
 
     public Game1()
     {
@@ -41,13 +48,23 @@ public class Game1 : Game
         // Instantiate map after GraphicsDevice is initialized
         _tileMap = new IsoTileMap(GraphicsDevice, 20, 20);
 
-        // Position camera to look at the center of the 20x20 map
-        _camera.LookAt(new Vector2(10f, 10f));
+        // Instantiate player at map center
+        _player = new Player(_whitePixel, new Vector2(10f, 10f));
+
+        // Instantiate systems
+        _movementSystem = new IsoMovementSystem();
+
+        // Position camera to look at the player immediately
+        _camera.LookAt(_player.WorldPosition);
     }
 
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+
+        // Generate white 1x1 texture for simple primitives
+        _whitePixel = new Texture2D(GraphicsDevice, 1, 1);
+        _whitePixel.SetData(new[] { Color.White });
     }
 
     protected override void Update(GameTime gameTime)
@@ -62,17 +79,14 @@ public class Game1 : Game
         // Update inputs
         _inputManager.Update();
 
-        // Temporary Camera Movement for Map Inspection in Phase 2
-        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-        if (_inputManager.MovementIntent != Vector2.Zero)
-        {
-            Vector2 screenDir = IsoMath.WorldToScreen(_inputManager.MovementIntent);
-            if (screenDir.LengthSquared() > 0f)
-            {
-                screenDir.Normalize();
-                _camera.Position += screenDir * 500f * dt;
-            }
-        }
+        // Update Player Input and Physics
+        _player.UpdateInput(_inputManager);
+        _movementSystem.Update(gameTime, _player);
+        _player.Update(gameTime);
+
+        // Camera follow player in world-screen space
+        Vector2 targetScreenPos = IsoMath.WorldToScreen(_player.WorldPosition);
+        _camera.FollowScreenPosition(targetScreenPos, 0.1f);
 
         base.Update(gameTime);
     }
@@ -82,7 +96,13 @@ public class Game1 : Game
         GraphicsDevice.Clear(new Color(20, 24, 28)); // Sleek dark gray background
 
         _spriteBatch.Begin();
+        
+        // Draw isometric map
         _tileMap.Draw(_spriteBatch, _camera);
+
+        // Draw player character
+        _player.Draw(_spriteBatch, _camera);
+
         _spriteBatch.End();
 
         base.Draw(gameTime);
