@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -23,7 +24,11 @@ public class Game1 : Game
     // Entities & Systems
     private Texture2D _whitePixel;
     private Player _player;
+    private List<Entity> _entities;
+    
+    // Systems
     private IsoMovementSystem _movementSystem;
+    private RenderOrderSystem _renderOrderSystem;
 
     public Game1()
     {
@@ -51,8 +56,12 @@ public class Game1 : Game
         // Instantiate player at map center
         _player = new Player(_whitePixel, new Vector2(10f, 10f));
 
+        // Instantiate entity list
+        _entities = new List<Entity> { _player };
+
         // Instantiate systems
         _movementSystem = new IsoMovementSystem();
+        _renderOrderSystem = new RenderOrderSystem();
 
         // Position camera to look at the player immediately
         _camera.LookAt(_player.WorldPosition);
@@ -100,8 +109,8 @@ public class Game1 : Game
         // Draw isometric map
         _tileMap.Draw(_spriteBatch, _camera);
 
-        // Draw player character
-        _player.Draw(_spriteBatch, _camera);
+        // Draw entities in depth-sorted order
+        _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
 
         _spriteBatch.End();
 
