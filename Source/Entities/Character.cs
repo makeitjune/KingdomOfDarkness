@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using KingdomOfDarkness.Core;
+using KingdomOfDarkness.UI;
 
 namespace KingdomOfDarkness.Entities;
 
@@ -31,6 +32,7 @@ public abstract class Character : Entity
     
     // For combat targeting
     public Character Target { get; set; }
+    public bool IsTargeted { get; set; } = false;
 
     protected Character(Texture2D whitePixel, string name, int maxHp, int attackPower, int defense, float moveSpeed)
     {
@@ -56,6 +58,43 @@ public abstract class Character : Entity
         }
     }
 
+    private void DrawLine(SpriteBatch sb, Vector2 p1, Vector2 p2, Color color, float thickness = 1.5f)
+    {
+        float angle = (float)System.Math.Atan2(p2.Y - p1.Y, p2.X - p1.X);
+        float length = Vector2.Distance(p1, p2);
+        sb.Draw(
+            WhitePixelTexture,
+            p1,
+            null,
+            color,
+            angle,
+            Vector2.Zero,
+            new Vector2(length, thickness),
+            SpriteEffects.None,
+            0f
+        );
+    }
+
+    private void DrawTargetMarker(SpriteBatch sb, Vector2 center)
+    {
+        // Draw red selection diamond around character feet
+        float halfW = 20f;
+        float halfH = 10f;
+        
+        Vector2 top = center - new Vector2(0, halfH);
+        Vector2 bottom = center + new Vector2(0, halfH);
+        Vector2 left = center - new Vector2(halfW, 0);
+        Vector2 right = center + new Vector2(halfW, 0);
+
+        Color targetColor = Color.Red;
+        float thickness = 2.0f;
+
+        DrawLine(sb, top, right, targetColor, thickness);
+        DrawLine(sb, right, bottom, targetColor, thickness);
+        DrawLine(sb, bottom, left, targetColor, thickness);
+        DrawLine(sb, left, top, targetColor, thickness);
+    }
+
     public override void Draw(SpriteBatch spriteBatch, Camera2D camera)
     {
         if (IsDead) return;
@@ -67,13 +106,29 @@ public abstract class Character : Entity
         // Get screen position from world position (which corresponds to the feet/base)
         Vector2 screenPos = camera.WorldToCameraScreen(WorldPosition);
 
-        // Draw character rectangle with feet origin (bottom-center)
-        // originX = width / 2, originY = height
-        Vector2 origin = new Vector2(charWidth / 2f, charHeight);
+        // 1. Draw simple shadow under feet (semi-transparent black)
+        Rectangle shadowRect = new Rectangle(
+            (int)(screenPos.X - 16),
+            (int)(screenPos.Y - 6),
+            32,
+            12
+        );
+        spriteBatch.Draw(
+            WhitePixelTexture,
+            shadowRect,
+            new Color(0, 0, 0, 100) // 100 alpha shadow
+        );
 
+        // 2. Draw targeted selection marker if applicable
+        if (IsTargeted)
+        {
+            DrawTargetMarker(spriteBatch, screenPos);
+        }
+
+        // 3. Draw character rectangle offset manually to avoid large origin scaling on 1x1 texture
         Rectangle destRect = new Rectangle(
-            (int)screenPos.X,
-            (int)screenPos.Y,
+            (int)(screenPos.X - charWidth / 2f),
+            (int)(screenPos.Y - charHeight),
             charWidth,
             charHeight
         );
@@ -81,17 +136,20 @@ public abstract class Character : Entity
         spriteBatch.Draw(
             WhitePixelTexture,
             destRect,
-            null,
-            DebugColor,
-            0f,
-            origin,
-            SpriteEffects.None,
-            0f
+            DebugColor
         );
 
-        // Draw a small nameplate or health bar outline above the character
-        // We will build a more detailed HUD/HealthBar system in Phase 7, 
-        // but it's nice to draw a simple green line for HP here.
+        // 4. Draw name label above character
+        string nameUpper = Name.ToUpper();
+        float nameScale = 0.7f;
+        Vector2 nameSize = SimpleFont.MeasureString(nameUpper, nameScale);
+        Vector2 namePos = new Vector2(screenPos.X - nameSize.X / 2f, screenPos.Y - charHeight - 24f);
+        
+        Color labelColor = DebugColor;
+        if (labelColor == Color.White) labelColor = Color.LightGray;
+        SimpleFont.DrawString(spriteBatch, WhitePixelTexture, nameUpper, namePos, labelColor, nameScale);
+
+        // 5. Draw status health bar
         DrawSimpleHealthBar(spriteBatch, screenPos, charHeight);
     }
 

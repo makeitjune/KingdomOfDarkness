@@ -56,11 +56,27 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        // Instantiate core systems
+        // Instantiate core logical systems
         _inputManager = new InputManager();
         _camera = new Camera2D(GameConstants.ScreenWidth, GameConstants.ScreenHeight);
+        _movementSystem = new IsoMovementSystem();
+        _companionAISystem = new CompanionAISystem();
+        _monsterAISystem = new MonsterAISystem();
+        _levelSystem = new LevelSystem();
+        _combatSystem = new CombatSystem(_levelSystem);
+        _dialogueReactionSystem = new DialogueReactionSystem();
+        _renderOrderSystem = new RenderOrderSystem();
 
         base.Initialize();
+    }
+
+    protected override void LoadContent()
+    {
+        _spriteBatch = new SpriteBatch(GraphicsDevice);
+
+        // Generate white 1x1 texture for simple primitives
+        _whitePixel = new Texture2D(GraphicsDevice, 1, 1);
+        _whitePixel.SetData(new[] { Color.White });
 
         // Instantiate map after GraphicsDevice is initialized
         _tileMap = new IsoTileMap(GraphicsDevice, 20, 20);
@@ -74,10 +90,10 @@ public class Game1 : Game
         // Instantiate companion near player
         _companion = new Companion(_whitePixel, _player.WorldPosition + new Vector2(-1f, 1f));
 
-        // Instantiate monsters
+        // Instantiate monsters (placed closer to player so they are visible on screen immediately)
         _monsters = new List<Monster>
         {
-            new Monster(_whitePixel, new Vector2(12f, 8f))
+            new Monster(_whitePixel, new Vector2(11.5f, 9.5f))
         };
 
         // Instantiate entity list and add characters
@@ -87,29 +103,11 @@ public class Game1 : Game
             _entities.Add(monster);
         }
 
-        // Instantiate systems
-        _movementSystem = new IsoMovementSystem();
-        _companionAISystem = new CompanionAISystem();
-        _monsterAISystem = new MonsterAISystem();
-        _levelSystem = new LevelSystem();
-        _combatSystem = new CombatSystem(_levelSystem);
-        _dialogueReactionSystem = new DialogueReactionSystem();
-        _renderOrderSystem = new RenderOrderSystem();
-
         // Instantiate UI
         _hud = new Hud(_whitePixel);
 
         // Position camera to look at the player immediately
         _camera.LookAt(_player.WorldPosition);
-    }
-
-    protected override void LoadContent()
-    {
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-        // Generate white 1x1 texture for simple primitives
-        _whitePixel = new Texture2D(GraphicsDevice, 1, 1);
-        _whitePixel.SetData(new[] { Color.White });
     }
 
     protected override void Update(GameTime gameTime)
@@ -144,6 +142,9 @@ public class Game1 : Game
             _monsterAISystem.Update(gameTime, monster, _player, _companion);
             _movementSystem.Update(gameTime, monster, _collisionMap);
             monster.Update(gameTime);
+
+            // Update targeted status
+            monster.IsTargeted = (_player.Target == monster);
         }
 
         // Update Combat interactions (handles cooldowns, damage, and rewards)

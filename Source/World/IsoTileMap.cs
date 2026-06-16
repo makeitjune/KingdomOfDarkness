@@ -13,6 +13,7 @@ public class IsoTileMap
 
     // Procedural textures
     private Texture2D _tileTexture;
+    private Texture2D _whitePixel;
 
     public IsoTileMap(GraphicsDevice graphicsDevice, int width = 20, int height = 20)
     {
@@ -22,6 +23,9 @@ public class IsoTileMap
 
         InitializeMap();
         GenerateTileTexture(graphicsDevice);
+
+        _whitePixel = new Texture2D(graphicsDevice, 1, 1);
+        _whitePixel.SetData(new[] { Color.White });
     }
 
     private void InitializeMap()
@@ -99,6 +103,23 @@ public class IsoTileMap
         return _tiles[x, y];
     }
 
+    private void DrawLine(SpriteBatch sb, Vector2 p1, Vector2 p2, Color color, float thickness = 1.5f)
+    {
+        float angle = (float)Math.Atan2(p2.Y - p1.Y, p2.X - p1.X);
+        float length = Vector2.Distance(p1, p2);
+        sb.Draw(
+            _whitePixel,
+            p1,
+            null,
+            color,
+            angle,
+            Vector2.Zero,
+            new Vector2(length, thickness),
+            SpriteEffects.None,
+            0f
+        );
+    }
+
     public void Draw(SpriteBatch spriteBatch, Camera2D camera)
     {
         // Origin of the tile draws at its center
@@ -123,6 +144,27 @@ public class IsoTileMap
                     SpriteEffects.None,
                     0f
                 );
+
+                // Overlay clearly visible border on blocked tiles
+                if (tile.IsBlocked)
+                {
+                    float halfW = GameConstants.TileWidth / 2f;
+                    float halfH = GameConstants.TileHeight / 2f;
+
+                    Vector2 top = screenPos - new Vector2(0, halfH);
+                    Vector2 bottom = screenPos + new Vector2(0, halfH);
+                    Vector2 left = screenPos - new Vector2(halfW, 0);
+                    Vector2 right = screenPos + new Vector2(halfW, 0);
+
+                    // Red border for blocked wall, Cyan for water
+                    Color borderCol = tile.Type == TileType.Water ? Color.Cyan : Color.Red;
+                    float thickness = 1.5f;
+
+                    DrawLine(spriteBatch, top, right, borderCol, thickness);
+                    DrawLine(spriteBatch, right, bottom, borderCol, thickness);
+                    DrawLine(spriteBatch, bottom, left, borderCol, thickness);
+                    DrawLine(spriteBatch, left, top, borderCol, thickness);
+                }
             }
         }
     }
