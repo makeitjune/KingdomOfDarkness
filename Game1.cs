@@ -1,6 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using KingdomOfDarkness.Core;
 
 namespace KingdomOfDarkness;
 
@@ -9,16 +10,27 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
+    // Core Helpers
+    private InputManager _inputManager;
+    private Camera2D _camera;
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
+
+        // Set screen resolution from constants
+        _graphics.PreferredBackBufferWidth = GameConstants.ScreenWidth;
+        _graphics.PreferredBackBufferHeight = GameConstants.ScreenHeight;
+        _graphics.ApplyChanges();
     }
 
     protected override void Initialize()
     {
-        // TODO: Add your initialization logic here
+        // Instantiate core systems
+        _inputManager = new InputManager();
+        _camera = new Camera2D(GameConstants.ScreenWidth, GameConstants.ScreenHeight);
 
         base.Initialize();
     }
@@ -26,16 +38,22 @@ public class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-        // TODO: use this.Content to load your game content here
     }
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+        // Handle exit input
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
+            Keyboard.GetState().IsKeyDown(Keys.Escape))
+        {
             Exit();
+        }
 
-        // TODO: Add your update logic here
+        // Update inputs
+        _inputManager.Update();
+
+        // Update camera (can follow Vector2.Zero for now)
+        _camera.FollowScreenPosition(Vector2.Zero, 0.1f);
 
         base.Update(gameTime);
     }
@@ -44,8 +62,7 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        // TODO: Add your drawing code here
-
         base.Draw(gameTime);
     }
 }
+
