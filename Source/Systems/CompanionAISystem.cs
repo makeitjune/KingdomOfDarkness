@@ -121,8 +121,10 @@ public class CompanionAISystem
                 }
 
                 // Move within attack range of the target
-                float distToMonster = Vector2.Distance(companion.WorldPosition, companion.Target.WorldPosition);
-                if (distToMonster > companion.AttackRange)
+                Vector2 diff = companion.Target.WorldPosition - companion.WorldPosition;
+                bool isOrthogonallyAdjacent = (System.Math.Abs(diff.X) + System.Math.Abs(diff.Y)) == 1.0f;
+                
+                if (!isOrthogonallyAdjacent)
                 {
                     companion.MovementIntent = GetGridIntent(companion.Target.WorldPosition - companion.WorldPosition);
                 }
@@ -130,6 +132,11 @@ public class CompanionAISystem
                 {
                     // In range: stop and wait to attack (handled by CombatSystem)
                     companion.MovementIntent = Vector2.Zero;
+                    Vector2 dir = companion.Target.WorldPosition - companion.WorldPosition;
+                    if (dir != Vector2.Zero)
+                    {
+                        companion.FacingDirection = GetGridIntent(dir);
+                    }
                 }
                 break;
 

@@ -81,19 +81,18 @@ public class MonsterSpawnSystem
         // Randomize respawn position slightly, but keep it within bounds and walkable
         for (int i = 0; i < 10; i++)
         {
-            Vector2 randomPos = monster.WorldPosition + new Vector2(
-                (float)(_rnd.NextDouble() * 4.0 - 2.0),
-                (float)(_rnd.NextDouble() * 4.0 - 2.0)
-            );
+            int tx = (int)monster.WorldPosition.X + _rnd.Next(-2, 3);
+            int ty = (int)monster.WorldPosition.Y + _rnd.Next(-2, 3);
+            Vector2 randomPos = new Vector2(tx, ty);
             
             // Check if valid using tile map (basic bounds check)
-            int tx = (int)randomPos.X;
-            int ty = (int)randomPos.Y;
             if (tx >= 0 && tx < _tileMap.Width && ty >= 0 && ty < _tileMap.Height)
             {
                 if (_tileMap.GetTile(tx, ty).Type != TileType.Water && 
                     _tileMap.GetTile(tx, ty).Type != TileType.Blocked)
                 {
+                    // Optionally, we could check if another entity is there, 
+                    // but for now, making it an exact integer prevents the float-equality bypass
                     monster.WorldPosition = randomPos;
                     break;
                 }

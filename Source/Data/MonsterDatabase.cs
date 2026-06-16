@@ -20,7 +20,7 @@ public static class MonsterDatabase
             50,   // HP
             8,    // Atk
             1,    // Def
-            2.5f, // Spd
+            0.8f, // Spd (1/4 of player)
             4.0f, // Aggro
             1.2f, // Range
             15,   // Exp
@@ -32,7 +32,7 @@ public static class MonsterDatabase
             70,
             12,
             3,
-            2.0f,
+            0.7f, // Spd
             3.5f,
             1.2f,
             25,
@@ -44,7 +44,7 @@ public static class MonsterDatabase
             40,
             15,
             1,
-            4.0f,
+            1.0f, // Spd
             5.0f,
             1.5f,
             20,
@@ -56,7 +56,7 @@ public static class MonsterDatabase
             60,
             20,
             2,
-            2.0f,
+            0.6f, // Spd
             6.0f,
             4.0f,
             40,
@@ -71,6 +71,6 @@ public static class MonsterDatabase
             return data;
         }
         // Fallback to a default slime
-        return new MonsterData("슬라임", 30, 5, 0, 1.5f, 3.0f, 1.2f, 10, Color.LightGreen);
+        return new MonsterData("슬라임", 30, 5, 0, 0.7f, 3.0f, 1.2f, 10, Color.LightGreen);
     }
 }

@@ -52,6 +52,11 @@ Character ranges: ASCII + Hangul Syllables (AC00-D7A3)
         <Start>&#xAC00;</Start>
         <End>&#xD7A3;</End>
       </CharacterRegion>
+      <!-- Korean Hangul Jamo -->
+      <CharacterRegion>
+        <Start>&#x3131;</Start>
+        <End>&#x318E;</End>
+      </CharacterRegion>
       <!-- Korean punctuation and symbols commonly used -->
       <CharacterRegion>
         <Start>&#x2026;</Start>

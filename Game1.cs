@@ -275,7 +275,7 @@ public class Game1 : Game
 
         // Update Player Input and Physics
         _player.UpdateInput(_inputManager);
-        _movementSystem.Update(gameTime, _player, _currentCollisionMap);
+        _movementSystem.Update(gameTime, _player, _currentCollisionMap, pos => IsTileOccupied(pos, _player));
         _player.Update(gameTime);
 
         // Check Portal collision
@@ -305,7 +305,7 @@ public class Game1 : Game
             // Only update physics and bubble if recruited, else they just stand there
             if (companion.IsRecruited)
             {
-                _movementSystem.Update(gameTime, companion, _currentCollisionMap);
+                _movementSystem.Update(gameTime, companion, _currentCollisionMap, pos => IsTileOccupied(pos, companion));
             }
             companion.Update(gameTime);
             companion.Bubble.Update(gameTime);
@@ -319,7 +319,7 @@ public class Game1 : Game
             foreach (var monster in _monsters)
             {
                 _monsterAISystem.Update(gameTime, monster, _player, recruitedCompanions);
-                _movementSystem.Update(gameTime, monster, _currentCollisionMap);
+                _movementSystem.Update(gameTime, monster, _currentCollisionMap, pos => IsTileOccupied(pos, monster));
                 monster.Update(gameTime);
 
                 monster.IsTargeted = (_player.Target == monster);
@@ -336,6 +336,23 @@ public class Game1 : Game
         base.Update(gameTime);
     }
 
+    private bool IsTileOccupied(Vector2 pos, Character ignoreChar)
+    {
+        if (_player != ignoreChar && !_player.IsDead && _player.WorldPosition == pos) return true;
+        foreach (var c in _companions)
+        {
+            if (c != ignoreChar && !c.IsDead && c.WorldPosition == pos) return true;
+        }
+        if (_currentMapType == MapType.HuntingGround)
+        {
+            foreach (var m in _monsters)
+            {
+                if (m != ignoreChar && !m.IsDead && m.WorldPosition == pos) return true;
+            }
+        }
+        return false;
+    }
+
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(new Color(20, 24, 28)); // Sleek dark gray background
@@ -344,7 +361,7 @@ public class Game1 : Game
 
         if (_currentState == GameStateType.ClassSelect)
         {
-            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
             _classSelectScreen.Draw(_spriteBatch);
             _spriteBatch.End();
             base.Draw(gameTime);
@@ -365,14 +382,17 @@ public class Game1 : Game
         // Draw entities in depth-sorted order
         _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
 
-        // Draw speech bubbles above characters (after entities are drawn)
+        _spriteBatch.End();
+
+        // Draw Speech Bubbles and Damage Popups with LinearClamp so the text isn't jagged
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
+
         foreach (var companion in _companions)
         {
             if (_currentMapType == MapType.HuntingGround && !companion.IsRecruited) continue;
             companion.Bubble.Draw(_spriteBatch, _camera, companion, _whitePixel);
         }
 
-        // Draw damage popups (above entities, below HUD)
         if (_currentMapType == MapType.HuntingGround)
         {
             _damagePopupManager.Draw(_spriteBatch, _camera);
@@ -380,7 +400,8 @@ public class Game1 : Game
 
         _spriteBatch.End();
 
-        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
+        // UI Layer uses LinearClamp for crisp text scaling
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
         // Draw HUD overlay on top of everything
         _hud.Draw(_spriteBatch, _player, _companions, _whitePixel);
 

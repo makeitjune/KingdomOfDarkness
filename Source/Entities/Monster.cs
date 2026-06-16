@@ -41,6 +41,7 @@ public class Monster : Character
         WorldPosition = startWorldPosition;
         _spawnPosition = startWorldPosition;
         MonsterTypeId = monsterTypeId;
+        AttackCooldownSeconds = 4.0f;
         ExperienceReward = data.ExperienceReward;
         AggroRange = data.AggroRange;
         AttackRange = data.AttackRange;

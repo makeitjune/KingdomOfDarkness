@@ -35,12 +35,30 @@ public class CombatSystem
         }
 
         // 3. Process Player attacks
-        if (player.Target != null && !player.Target.IsDead)
+        if (attackRequested && player.AttackCooldownRemaining <= 0f && player.MoveCooldownRemaining <= 0f)
         {
-            // Player attacks when Space (attackRequested) is pressed/held AND within range
-            if (attackRequested)
+            Vector2 attackPos = player.WorldPosition + player.FacingDirection;
+            Monster hitTarget = null;
+            
+            foreach (var m in monsters)
             {
-                TryAttack(player, player.Target, player, companions, dialogueSystem);
+                if (!m.IsDead && m.WorldPosition == attackPos)
+                {
+                    hitTarget = m;
+                    break;
+                }
+            }
+
+            if (hitTarget != null)
+            {
+                player.Target = hitTarget; // Auto-target who we hit
+                TryAttack(player, hitTarget, player, companions, dialogueSystem);
+            }
+            else
+            {
+                // Swing at air
+                player.AttackCooldownRemaining = player.AttackCooldownSeconds;
+                player.MoveCooldownRemaining = Math.Max(player.MoveCooldownRemaining, 0.3f);
             }
         }
 
@@ -87,10 +105,14 @@ public class CombatSystem
     {
         if (attacker == null || target == null || attacker.IsDead || target.IsDead) return;
 
-        float distance = Vector2.Distance(attacker.WorldPosition, target.WorldPosition);
-        
-        // Check range and cooldown
-        if (distance <= attacker.AttackRange && attacker.AttackCooldownRemaining <= 0f)
+        // Basic attack is ONLY allowed if the target is exactly 1 tile away in the direction the attacker is facing
+        if (target.WorldPosition != attacker.WorldPosition + attacker.FacingDirection)
+        {
+            return;
+        }
+
+        // Check cooldowns (cannot attack if currently on movement cooldown - no moving shot)
+        if (attacker.AttackCooldownRemaining <= 0f && attacker.MoveCooldownRemaining <= 0f)
         {
             // Damage formula: damage = max(1, attacker.AttackPower - target.Defense)
             int damage = Math.Max(1, attacker.AttackPower - target.Defense);
@@ -98,6 +120,9 @@ public class CombatSystem
 
             // Reset cooldown
             attacker.AttackCooldownRemaining = attacker.AttackCooldownSeconds;
+            
+            // Apply a slight move cooldown to prevent moving immediately after attacking
+            attacker.MoveCooldownRemaining = Math.Max(attacker.MoveCooldownRemaining, 0.3f);
 
             // Spawn damage popup
             _damagePopupManager.Spawn(target.WorldPosition, damage);

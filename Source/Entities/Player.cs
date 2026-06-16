@@ -53,7 +53,14 @@ public class Player : Character
             return;
         }
 
-        // Set movement intent directly
-        MovementIntent = inputManager.MovementIntent;
+        // Prevent moving shot: if attacking, stop moving
+        if (inputManager.IsAttackRequested)
+        {
+            MovementIntent = Vector2.Zero;
+        }
+        else
+        {
+            MovementIntent = inputManager.MovementIntent;
+        }
     }
 }

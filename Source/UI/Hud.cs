@@ -35,7 +35,7 @@ public class Hud
 
         int panelW = 380;
         int panelH = 70 + (recruitedCount * 40); // Dynamic height
-        Vector2 panelPos = new Vector2(20, GameConstants.ScreenHeight - panelH - 20);
+        Vector2 panelPos = new Vector2(20, GameConstants.LogicalScreenHeight - panelH - 20);
 
         // 1. Draw Panel Background (Glassmorphism dark gray)
         spriteBatch.Draw(
@@ -89,8 +89,9 @@ public class Hud
     private void DrawTargetPanel(SpriteBatch spriteBatch, Character target)
     {
         int panelW = 280;
-        int panelH = 70;
-        Vector2 panelPos = new Vector2(GameConstants.ScreenWidth / 2f - panelW / 2f, 20);
+        int panelH = 65;
+        // Top right corner using logical width
+        Vector2 panelPos = new Vector2(GameConstants.LogicalScreenWidth - panelW - 20, 20);
 
         // Draw Panel Background (Glassmorphism dark gray with subtle red glow border for hostility)
         spriteBatch.Draw(

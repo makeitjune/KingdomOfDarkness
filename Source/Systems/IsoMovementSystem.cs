@@ -6,7 +6,7 @@ namespace KingdomOfDarkness.Systems;
 
 public class IsoMovementSystem
 {
-    public void Update(GameTime gameTime, Character character, CollisionMap collisionMap)
+    public void Update(GameTime gameTime, Character character, CollisionMap collisionMap, System.Func<Vector2, bool> isOccupied = null)
     {
         if (character == null || character.IsDead) return;
 
@@ -31,20 +31,33 @@ public class IsoMovementSystem
             if (intent.Y > 0) intent.Y = 1;
             if (intent.Y < 0) intent.Y = -1;
 
+            // Tap to turn: if changing direction, only change facing and apply full movement delay
+            if (character.FacingDirection != intent)
+            {
+                character.FacingDirection = intent;
+                character.MoveCooldownRemaining = 1f / character.MoveSpeed;
+                character.MovementIntent = Vector2.Zero;
+                return;
+            }
+
             Vector2 nextPosition = character.WorldPosition + intent;
 
-            if (collisionMap != null)
+            bool canMove = true;
+            
+            if (collisionMap != null && collisionMap.IsBlocked(nextPosition.X, nextPosition.Y))
             {
-                if (!collisionMap.IsBlocked(nextPosition.X, nextPosition.Y))
-                {
-                    character.WorldPosition = nextPosition;
-                    // Trigger cooldown. For example, MoveSpeed = 3.5 means 3.5 tiles per second, so cooldown = 1 / 3.5
-                    character.MoveCooldownRemaining = 1f / character.MoveSpeed;
-                }
+                canMove = false;
             }
-            else
+            
+            if (isOccupied != null && isOccupied(nextPosition))
+            {
+                canMove = false;
+            }
+
+            if (canMove)
             {
                 character.WorldPosition = nextPosition;
+                // Trigger cooldown. For example, MoveSpeed = 3.5 means 3.5 tiles per second, so cooldown = 1 / 3.5
                 character.MoveCooldownRemaining = 1f / character.MoveSpeed;
             }
 

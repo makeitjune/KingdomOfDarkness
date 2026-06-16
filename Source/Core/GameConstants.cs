@@ -12,4 +12,8 @@ public static class GameConstants
     
     // Pixel Art Scale
     public const float RenderScale = 2.0f;
+
+    // Logical dimensions for UI
+    public static float LogicalScreenWidth => ScreenWidth / RenderScale;
+    public static float LogicalScreenHeight => ScreenHeight / RenderScale;
 }

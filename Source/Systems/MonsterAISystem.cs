@@ -58,11 +58,20 @@ public class MonsterAISystem
 
         float distance = Vector2.Distance(monster.WorldPosition, monster.Target.WorldPosition);
 
+        // Check if orthogonally adjacent (distance is exactly 1 on one axis)
+        Vector2 diff = monster.Target.WorldPosition - monster.WorldPosition;
+        bool isOrthogonallyAdjacent = (System.Math.Abs(diff.X) + System.Math.Abs(diff.Y)) == 1.0f;
+
         // State Machine
-        if (distance <= monster.AttackRange)
+        if (isOrthogonallyAdjacent)
         {
             monster.State = MonsterState.Attack;
             monster.MovementIntent = Vector2.Zero;
+            Vector2 dir = monster.Target.WorldPosition - monster.WorldPosition;
+            if (dir != Vector2.Zero)
+            {
+                monster.FacingDirection = GetGridIntent(dir);
+            }
         }
         else
         {

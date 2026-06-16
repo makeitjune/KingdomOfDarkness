@@ -28,6 +28,7 @@ public abstract class Character : Entity
 
     // Movement (Grid Snapping)
     public Vector2 MovementIntent { get; set; }
+    public Vector2 FacingDirection { get; set; } = new Vector2(1, 0);
     public float MoveSpeed { get; set; } // tiles per second
     public float MoveCooldownRemaining { get; set; } = 0.0f;
 
