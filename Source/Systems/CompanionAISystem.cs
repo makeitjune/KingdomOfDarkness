@@ -10,7 +10,7 @@ public class CompanionAISystem
     private const float ComfortMaxDistance = 1.8f;
     private const float RetreatThreshold = 0.3f; // 30% HP
 
-    public void Update(GameTime gameTime, Companion companion, Player player)
+    public void Update(GameTime gameTime, Companion companion, Player player, DialogueReactionSystem dialogueSystem)
     {
         if (companion == null || companion.IsDead)
         {
@@ -23,23 +23,36 @@ public class CompanionAISystem
         }
 
         float distToPlayer = Vector2.Distance(companion.WorldPosition, player.WorldPosition);
+        CompanionState oldState = companion.State;
 
         // State Transitions
         // 1. Low HP Retreat
         if ((float)companion.CurrentHP / companion.MaxHP < RetreatThreshold)
         {
             companion.State = CompanionState.Retreat;
+            if (oldState != CompanionState.Retreat)
+            {
+                dialogueSystem.TriggerReaction(companion, companion.Bubble, DialogueEvent.LowHealth);
+            }
         }
         // 2. Assist in combat if player is targeting an alive monster
         else if (player.Target != null && !player.Target.IsDead)
         {
             companion.Target = player.Target;
             companion.State = CompanionState.AssistAttack;
+            if (oldState != CompanionState.AssistAttack)
+            {
+                dialogueSystem.TriggerReaction(companion, companion.Bubble, DialogueEvent.CombatStart);
+            }
         }
         // 3. Fall back to follow player if too far
         else if (distToPlayer > ComfortMaxDistance)
         {
             companion.State = CompanionState.FollowPlayer;
+            if (oldState != CompanionState.FollowPlayer && distToPlayer > 2.8f)
+            {
+                dialogueSystem.TriggerReaction(companion, companion.Bubble, DialogueEvent.TooFar);
+            }
         }
         // 4. Idle if within comfort range
         else if (distToPlayer < ComfortMinDistance && companion.State == CompanionState.FollowPlayer)

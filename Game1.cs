@@ -6,6 +6,7 @@ using KingdomOfDarkness.Core;
 using KingdomOfDarkness.World;
 using KingdomOfDarkness.Entities;
 using KingdomOfDarkness.Systems;
+using KingdomOfDarkness.UI;
 
 namespace KingdomOfDarkness;
 
@@ -34,7 +35,11 @@ public class Game1 : Game
     private MonsterAISystem _monsterAISystem;
     private CombatSystem _combatSystem;
     private LevelSystem _levelSystem;
+    private DialogueReactionSystem _dialogueReactionSystem;
     private RenderOrderSystem _renderOrderSystem;
+
+    // UI
+    private Hud _hud;
 
     public Game1()
     {
@@ -84,7 +89,11 @@ public class Game1 : Game
         _monsterAISystem = new MonsterAISystem();
         _levelSystem = new LevelSystem();
         _combatSystem = new CombatSystem(_levelSystem);
+        _dialogueReactionSystem = new DialogueReactionSystem();
         _renderOrderSystem = new RenderOrderSystem();
+
+        // Instantiate UI
+        _hud = new Hud(_whitePixel);
 
         // Position camera to look at the player immediately
         _camera.LookAt(_player.WorldPosition);
@@ -116,10 +125,14 @@ public class Game1 : Game
         _movementSystem.Update(gameTime, _player);
         _player.Update(gameTime);
 
-        // Update Companion AI and Physics
-        _companionAISystem.Update(gameTime, _companion, _player);
+        // Update Dialogue reaction system cooldowns
+        _dialogueReactionSystem.Update(gameTime);
+
+        // Update Companion AI, Speech Bubble, and Physics
+        _companionAISystem.Update(gameTime, _companion, _player, _dialogueReactionSystem);
         _movementSystem.Update(gameTime, _companion);
         _companion.Update(gameTime);
+        _companion.Bubble.Update(gameTime);
 
         // Update Monsters AI and Physics
         foreach (var monster in _monsters)
@@ -130,7 +143,7 @@ public class Game1 : Game
         }
 
         // Update Combat interactions (handles cooldowns, damage, and rewards)
-        _combatSystem.Update(gameTime, _player, _companion, _monsters, _inputManager.IsAttackRequested);
+        _combatSystem.Update(gameTime, _player, _companion, _monsters, _inputManager.IsAttackRequested, _dialogueReactionSystem);
 
         // Camera follow player in world-screen space
         Vector2 targetScreenPos = IsoMath.WorldToScreen(_player.WorldPosition);
@@ -150,6 +163,12 @@ public class Game1 : Game
 
         // Draw entities in depth-sorted order
         _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
+
+        // Draw speech bubbles above characters (after entities are drawn)
+        _companion.Bubble.Draw(_spriteBatch, _camera, _companion, _whitePixel);
+
+        // Draw HUD overlay on top of everything
+        _hud.Draw(_spriteBatch, _player, _companion, _whitePixel);
 
         _spriteBatch.End();
 

@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using KingdomOfDarkness.UI;
 
 namespace KingdomOfDarkness.Entities;
 
@@ -15,6 +16,7 @@ public enum CompanionState
 public class Companion : Character
 {
     public CompanionState State { get; set; } = CompanionState.Idle;
+    public SpeechBubble Bubble { get; } = new SpeechBubble();
 
     public Companion(Texture2D whitePixel, Vector2 startWorldPosition)
         : base(

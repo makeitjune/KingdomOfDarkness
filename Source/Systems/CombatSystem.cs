@@ -14,7 +14,7 @@ public class CombatSystem
         _levelSystem = levelSystem;
     }
 
-    public void Update(GameTime gameTime, Player player, Companion companion, List<Monster> monsters, bool attackRequested)
+    public void Update(GameTime gameTime, Player player, Companion companion, List<Monster> monsters, bool attackRequested, DialogueReactionSystem dialogueSystem)
     {
         // 1. Target selection: If player has no target or target is dead, select the nearest alive monster
         if (player.Target == null || player.Target.IsDead)
@@ -34,14 +34,14 @@ public class CombatSystem
             // Player attacks when Space (attackRequested) is pressed/held AND within range
             if (attackRequested)
             {
-                TryAttack(player, player.Target, player, companion);
+                TryAttack(player, player.Target, player, companion, dialogueSystem);
             }
         }
 
         // 4. Process Companion attacks (attacks automatically if state is AssistAttack and target is in range)
         if (companion.Target != null && !companion.Target.IsDead && companion.State == CompanionState.AssistAttack)
         {
-            TryAttack(companion, companion.Target, player, companion);
+            TryAttack(companion, companion.Target, player, companion, dialogueSystem);
         }
 
         // 5. Process Monster attacks (attacks target player/companion automatically when in range)
@@ -49,7 +49,7 @@ public class CombatSystem
         {
             if (monster.Target != null && !monster.Target.IsDead && monster.State == MonsterState.Attack)
             {
-                TryAttack(monster, monster.Target, player, companion);
+                TryAttack(monster, monster.Target, player, companion, dialogueSystem);
             }
         }
     }
@@ -74,7 +74,7 @@ public class CombatSystem
         return closest;
     }
 
-    private void TryAttack(Character attacker, Character target, Player player, Companion companion)
+    private void TryAttack(Character attacker, Character target, Player player, Companion companion, DialogueReactionSystem dialogueSystem)
     {
         if (attacker == null || target == null || attacker.IsDead || target.IsDead) return;
 
@@ -103,6 +103,9 @@ public class CombatSystem
 
                     companion.Experience += monster.ExperienceReward;
                     _levelSystem.CheckLevelUp(companion);
+
+                    // Trigger dialogue reaction on kill
+                    dialogueSystem.TriggerReaction(companion, companion.Bubble, DialogueEvent.KillMonster);
                 }
             }
         }
