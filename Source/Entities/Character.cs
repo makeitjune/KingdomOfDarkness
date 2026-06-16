@@ -154,11 +154,11 @@ public abstract class Character : Entity
             new Color(0, 0, 0, 100) // 100 alpha shadow
         );
 
-        // 2. Draw targeted selection marker if applicable
-        if (IsTargeted)
-        {
-            DrawTargetMarker(spriteBatch, screenPos);
-        }
+        // 2. Draw targeted selection marker if applicable (Removed per request)
+        // if (IsTargeted)
+        // {
+        //     DrawTargetMarker(spriteBatch, screenPos);
+        // }
 
         // 3. Draw character rectangle offset manually to avoid large origin scaling on 1x1 texture
         Rectangle destRect = new Rectangle(

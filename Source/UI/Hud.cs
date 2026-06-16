@@ -188,8 +188,9 @@ public class Hud
         }
 
         // ==========================================
-        // FLOATING TARGET OVERLAY
+        // FLOATING TARGET OVERLAY (Removed per request)
         // ==========================================
+        /*
         if (player.Target != null && !player.Target.IsDead)
         {
             int tX = logicalWidth / 2 - (int)(120 * scale);
@@ -202,6 +203,7 @@ public class Hud
             float tRatio = (float)player.Target.CurrentHP / player.Target.MaxHP;
             spriteBatch.Draw(_whitePixel, new Rectangle(tHpRect.X, tHpRect.Y, (int)(tHpRect.Width * tRatio), tHpRect.Height), Color.Crimson);
         }
+        */
     }
 
     private void DrawText(SpriteBatch sb, string text, int x, int y, Color color, float scale)
