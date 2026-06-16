@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using KingdomOfDarkness.Core;
+using KingdomOfDarkness.World;
 
 namespace KingdomOfDarkness;
 
@@ -13,6 +14,9 @@ public class Game1 : Game
     // Core Helpers
     private InputManager _inputManager;
     private Camera2D _camera;
+
+    // World Map
+    private IsoTileMap _tileMap;
 
     public Game1()
     {
@@ -33,6 +37,12 @@ public class Game1 : Game
         _camera = new Camera2D(GameConstants.ScreenWidth, GameConstants.ScreenHeight);
 
         base.Initialize();
+
+        // Instantiate map after GraphicsDevice is initialized
+        _tileMap = new IsoTileMap(GraphicsDevice, 20, 20);
+
+        // Position camera to look at the center of the 20x20 map
+        _camera.LookAt(new Vector2(10f, 10f));
     }
 
     protected override void LoadContent()
@@ -52,15 +62,28 @@ public class Game1 : Game
         // Update inputs
         _inputManager.Update();
 
-        // Update camera (can follow Vector2.Zero for now)
-        _camera.FollowScreenPosition(Vector2.Zero, 0.1f);
+        // Temporary Camera Movement for Map Inspection in Phase 2
+        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (_inputManager.MovementIntent != Vector2.Zero)
+        {
+            Vector2 screenDir = IsoMath.WorldToScreen(_inputManager.MovementIntent);
+            if (screenDir.LengthSquared() > 0f)
+            {
+                screenDir.Normalize();
+                _camera.Position += screenDir * 500f * dt;
+            }
+        }
 
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
+        GraphicsDevice.Clear(new Color(20, 24, 28)); // Sleek dark gray background
+
+        _spriteBatch.Begin();
+        _tileMap.Draw(_spriteBatch, _camera);
+        _spriteBatch.End();
 
         base.Draw(gameTime);
     }
