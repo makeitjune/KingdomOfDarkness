@@ -105,6 +105,8 @@ public class Game1 : Game
         // Generate white 1x1 texture for simple primitives
         _whitePixel = new Texture2D(GraphicsDevice, 1, 1);
         _whitePixel.SetData(new[] { Color.White });
+        
+        KingdomOfDarkness.UI.UIHelper.Initialize(_whitePixel);
 
         // Initialize Data
         ClassDatabase.Initialize();

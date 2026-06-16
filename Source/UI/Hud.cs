@@ -18,154 +18,200 @@ public class Hud
 
     public void Draw(SpriteBatch spriteBatch, Player player, List<Companion> companions, Texture2D whitePixel)
     {
-        // Draw bottom party status panel
-        DrawPartyPanel(spriteBatch, player, companions);
+        int logicalWidth = (int)GameConstants.LogicalScreenWidth;
+        int logicalHeight = (int)GameConstants.LogicalScreenHeight;
+        
+        // 1. Dynamic Height (38% of screen height)
+        int panelHeight = (int)(logicalHeight * 0.38f);
+        int hudY = logicalHeight - panelHeight;
+        
+        // Dynamic scale relative to 160px baseline
+        float scale = panelHeight / 160f;
 
-        // Draw top target monster panel if player has a live target
-        if (player.Target != null && !player.Target.IsDead)
+        // Draw Full Width Background
+        Rectangle bottomRect = new Rectangle(0, hudY, logicalWidth, panelHeight);
+        UIHelper.DrawRetroPanel(spriteBatch, bottomRect);
+
+        // Calculate absolute scaled dimensions
+        int leftWidth = (int)(130 * scale);
+        int rightWidth = (int)(150 * scale);
+        int centerWidth = logicalWidth - leftWidth - rightWidth;
+        int cX = leftWidth;
+        int rX = logicalWidth - rightWidth;
+
+        // Base font scales
+        float labelFontScale = 0.85f * scale;
+        float valueFontScale = 0.95f * scale;
+
+        // ==========================================
+        // LEFT PANEL (Anchored Left)
+        // ==========================================
+        int orbW = (int)(30 * scale);
+        int orbH = (int)(100 * scale);
+        int orbY = hudY + (int)(30 * scale);
+
+        // HP Text
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(10, hudY + (int)(10 * scale), (int)(100 * scale), (int)(16 * scale)));
+        DrawTextRightAligned(spriteBatch, player.CurrentHP.ToString(), 10 + (int)(95 * scale), hudY + (int)(10 * scale), new Color(255, 100, 100), valueFontScale);
+        
+        // HP Orb
+        Rectangle hpRect = new Rectangle(15, orbY, orbW, orbH);
+        float hpRatio = player.MaxHP > 0 ? (float)player.CurrentHP / player.MaxHP : 0f;
+        UIHelper.DrawHpMpOrb(spriteBatch, hpRect, hpRatio, new Color(220, 30, 30));
+
+        // MP Orb
+        Rectangle mpRect = new Rectangle(15 + orbW + (int)(15 * scale), orbY, orbW, orbH);
+        float mpRatio = player.MaxMP > 0 ? (float)player.CurrentMP / player.MaxMP : 0f;
+        UIHelper.DrawHpMpOrb(spriteBatch, mpRect, mpRatio, new Color(30, 100, 240));
+
+        // MP Text
+        int mpTextY = orbY + orbH + (int)(5 * scale);
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(10, mpTextY, (int)(100 * scale), (int)(16 * scale)));
+        DrawTextRightAligned(spriteBatch, player.CurrentMP.ToString(), 10 + (int)(95 * scale), mpTextY, new Color(100, 150, 255), valueFontScale);
+
+
+        // ==========================================
+        // CENTER PANEL (Stretched)
+        // ==========================================
+        
+        // Top Message Box (Full width of center panel)
+        int msgY = hudY + (int)(10 * scale);
+        int msgH = (int)(22 * scale);
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(cX, msgY, centerWidth - (int)(10 * scale), msgH));
+        DrawText(spriteBatch, "환영합니다.", cX + (int)(10 * scale), msgY + (int)(3 * scale), new Color(220, 180, 120), labelFontScale);
+
+        // Stat Area (Centered within Center Panel)
+        int statTotalWidth = (int)(450 * scale);
+        int statStartX = cX + (centerWidth - statTotalWidth) / 2;
+        int sY = msgY + msgH + (int)(10 * scale);
+        int rowH = (int)(20 * scale); // Taller rows!
+
+        // Col 1
+        string[] stats = { "STR", "INT", "WIS", "CON", "DEX" };
+        int[] statVals = { 5, 97, 109, 4, 3 }; 
+        for (int i = 0; i < 5; i++)
         {
-            DrawTargetPanel(spriteBatch, player.Target);
+            int y = sY + (i * rowH);
+            DrawText(spriteBatch, stats[i], statStartX, y, new Color(180, 160, 140), labelFontScale);
+            UIHelper.DrawInsetBox(spriteBatch, new Rectangle(statStartX + (int)(40 * scale), y + 1, (int)(30 * scale), (int)(16 * scale)));
+            DrawTextRightAligned(spriteBatch, statVals[i].ToString(), statStartX + (int)(65 * scale), y, Color.Wheat, valueFontScale);
+            spriteBatch.Draw(_whitePixel, new Rectangle(statStartX + (int)(75 * scale), y + 3, (int)(10 * scale), (int)(10 * scale)), new Color(100, 80, 60));
         }
-    }
 
-    private void DrawPartyPanel(SpriteBatch spriteBatch, Player player, List<Companion> companions)
-    {
-        int recruitedCount = 0;
-        foreach (var c in companions) { if (c.IsRecruited) recruitedCount++; }
+        // Col 2
+        int c2X = statStartX + (int)(120 * scale);
+        int col2LblW = (int)(50 * scale);
+        DrawText(spriteBatch, "HP", c2X, sY, new Color(180, 160, 140), labelFontScale);
+        DrawText(spriteBatch, "MP", c2X, sY + rowH, new Color(180, 160, 140), labelFontScale);
+        DrawText(spriteBatch, "EXP", c2X - (int)(5 * scale), sY + rowH * 2, new Color(180, 160, 140), labelFontScale);
+        DrawText(spriteBatch, "GOLD", c2X - (int)(15 * scale), sY + rowH * 3, new Color(180, 160, 140), labelFontScale);
 
-        int panelW = 380;
-        int panelH = 70 + (recruitedCount * 40); // Dynamic height
-        Vector2 panelPos = new Vector2(20, GameConstants.LogicalScreenHeight - panelH - 20);
+        int b2X = c2X + col2LblW;
+        int b2W = (int)(140 * scale);
+        int b2H = (int)(16 * scale);
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b2X, sY + 1, b2W, b2H)); // HP
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b2X, sY + rowH + 1, b2W, b2H)); // MP
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b2X, sY + rowH * 2 + 1, b2W, b2H)); // EXP
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b2X, sY + rowH * 3 + 1, b2W, b2H)); // GOLD
 
-        // 1. Draw Panel Background (Glassmorphism dark gray)
-        spriteBatch.Draw(
-            _whitePixel,
-            new Rectangle((int)panelPos.X, (int)panelPos.Y, panelW, panelH),
-            new Color(10, 14, 18, 220)
-        );
+        DrawTextRightAligned(spriteBatch, player.CurrentHP.ToString(), b2X + (int)(65 * scale), sY, Color.Wheat, valueFontScale);
+        DrawTextRightAligned(spriteBatch, player.MaxHP.ToString(), b2X + b2W - (int)(5 * scale), sY, new Color(150, 130, 110), valueFontScale);
+        
+        DrawTextRightAligned(spriteBatch, player.CurrentMP.ToString(), b2X + (int)(65 * scale), sY + rowH, Color.Wheat, valueFontScale);
+        DrawTextRightAligned(spriteBatch, player.MaxMP.ToString(), b2X + b2W - (int)(5 * scale), sY + rowH, new Color(150, 130, 110), valueFontScale);
 
-        // Border
-        DrawOutline(spriteBatch, new Rectangle((int)panelPos.X, (int)panelPos.Y, panelW, panelH), new Color(100, 110, 120, 150), 1);
+        DrawTextRightAligned(spriteBatch, player.Experience.ToString(), b2X + b2W - (int)(5 * scale), sY + rowH * 2, Color.Wheat, valueFontScale);
+        DrawTextRightAligned(spriteBatch, "1000000", b2X + b2W - (int)(5 * scale), sY + rowH * 3, Color.Wheat, valueFontScale);
 
-        // Header
-        FontManager.DrawString(spriteBatch, "파티 상태", panelPos + new Vector2(15, 12), Color.Gold, 0.85f);
+        // Col 3
+        int c3X = c2X + (int)(210 * scale);
+        DrawText(spriteBatch, "Level", c3X, sY, new Color(180, 160, 140), labelFontScale);
+        DrawText(spriteBatch, "next LEV", c3X - (int)(25 * scale), sY + rowH, new Color(180, 160, 140), labelFontScale);
+        
+        int b3X = c3X + (int)(50 * scale);
+        int b3W = (int)(45 * scale);
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b3X, sY + 1, b3W, b2H));
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(b3X, sY + rowH + 1, b3W, b2H));
+        
+        DrawTextRightAligned(spriteBatch, player.Level.ToString(), b3X + b3W - (int)(5 * scale), sY, Color.Wheat, valueFontScale);
+        DrawTextRightAligned(spriteBatch, "0", b3X + b3W - (int)(5 * scale), sY + rowH, Color.Wheat, valueFontScale);
 
-        // 2. Draw Player Stats
-        Vector2 playerStatsPos = panelPos + new Vector2(15, 36);
-        string playerText = $"[{player.ClassType}] {player.Name}  Lv.{player.Level}";
-        FontManager.DrawString(spriteBatch, playerText, playerStatsPos, Color.White, 0.7f);
+        // Bottom Strip (Coordinates, Zone)
+        int stripY = sY + rowH * 4 + (int)(10 * scale);
+        string coordStr = $"X Y   {(int)player.WorldPosition.X}, {(int)player.WorldPosition.Y}";
+        DrawText(spriteBatch, coordStr, statStartX + (int)(20 * scale), stripY, new Color(200, 180, 150), labelFontScale * 0.9f);
+        DrawText(spriteBatch, "zone", statStartX + (int)(150 * scale), stripY - (int)(3 * scale), new Color(150, 130, 100), labelFontScale * 0.7f);
+        DrawText(spriteBatch, "여관", statStartX + (int)(140 * scale), stripY + (int)(5 * scale), Color.White, labelFontScale * 0.9f);
+        DrawText(spriteBatch, "weight", statStartX + (int)(250 * scale), stripY - (int)(3 * scale), new Color(150, 130, 100), labelFontScale * 0.7f);
+        DrawText(spriteBatch, "50 / 100", statStartX + (int)(240 * scale), stripY + (int)(5 * scale), Color.White, labelFontScale * 0.9f);
+        DrawText(spriteBatch, "Native", statStartX + (int)(350 * scale), stripY, new Color(150, 130, 100), labelFontScale * 0.9f);
 
-        // HP/MP Bar
-        Vector2 playerHpPos = playerStatsPos + new Vector2(0, 14);
-        DrawStatusBar(spriteBatch, playerHpPos, 100, 6, player.CurrentHP, player.MaxHP, Color.Crimson, "HP");
-        DrawStatusBar(spriteBatch, playerHpPos + new Vector2(140, 0), 80, 6, player.CurrentMP, player.MaxMP, Color.DodgerBlue, "MP");
-        string playerHpStr = $"{player.CurrentHP}/{player.MaxHP}";
-        FontManager.DrawString(spriteBatch, playerHpStr, playerHpPos + new Vector2(250, 0), Color.LightGray, 0.60f);
 
-        // 3. Draw Companion Stats
+        // ==========================================
+        // RIGHT PANEL (Anchored Right)
+        // ==========================================
+        DrawText(spriteBatch, "ID", rX + (int)(40 * scale), hudY + (int)(10 * scale), new Color(150, 130, 100), labelFontScale);
+        UIHelper.DrawInsetBox(spriteBatch, new Rectangle(rX + (int)(10 * scale), hudY + (int)(25 * scale), (int)(120 * scale), (int)(20 * scale)));
+        DrawText(spriteBatch, player.Name, rX + (int)(25 * scale), hudY + (int)(25 * scale), Color.White, valueFontScale);
+
+        // Buttons
+        for (int i=0; i<3; i++)
+        {
+            for(int j=0; j<2; j++)
+            {
+                spriteBatch.Draw(_whitePixel, new Rectangle(rX + (int)(35 * scale) + j*(int)(35 * scale), hudY + (int)(55 * scale) + i*(int)(25 * scale), (int)(20 * scale), (int)(20 * scale)), new Color(100, 80, 60));
+            }
+        }
+
+        DrawText(spriteBatch, "SHOP", rX + (int)(45 * scale), hudY + (int)(135 * scale), new Color(200, 180, 100), labelFontScale);
+        
+        // ==========================================
+        // FLOATING PARTY OVERLAY
+        // ==========================================
         int compIndex = 0;
         foreach (var comp in companions)
         {
             if (!comp.IsRecruited) continue;
-            Vector2 compStatsPos = playerStatsPos + new Vector2(0, 36 + (compIndex * 40));
-            string compText = $"[{comp.ClassType}] {comp.Name}  Lv.{comp.Level}";
-            FontManager.DrawString(spriteBatch, compText, compStatsPos, Color.White, 0.65f);
-
-            // HP/MP Bar
-            Vector2 compHpPos = compStatsPos + new Vector2(0, 14);
-            DrawStatusBar(spriteBatch, compHpPos, 100, 6, comp.CurrentHP, comp.MaxHP, Color.Crimson, "HP");
-            DrawStatusBar(spriteBatch, compHpPos + new Vector2(140, 0), 80, 6, comp.CurrentMP, comp.MaxMP, Color.DodgerBlue, "MP");
-            string compHpStr = $"{comp.CurrentHP}/{comp.MaxHP}";
-            FontManager.DrawString(spriteBatch, compHpStr, compHpPos + new Vector2(250, 0), Color.LightGray, 0.60f);
-
-            // Companion State text
-            string stateStr = GetKoreanState(comp.State);
-            FontManager.DrawString(spriteBatch, stateStr, compStatsPos + new Vector2(250, -4), Color.Plum, 0.6f);
+            int cY = hudY - (int)(30 * scale) - (compIndex * (int)(30 * scale));
+            int cXp = 10; 
+            
+            spriteBatch.Draw(_whitePixel, new Rectangle(cXp, cY, (int)(180 * scale), (int)(25 * scale)), new Color(0, 0, 0, 150));
+            DrawText(spriteBatch, $"[파티] {comp.Name}", cXp + 5, cY + 2, Color.LightGreen, labelFontScale);
+            
+            Rectangle cRect = new Rectangle(cXp + (int)(100 * scale), cY + (int)(10 * scale), (int)(70 * scale), (int)(8 * scale));
+            spriteBatch.Draw(_whitePixel, cRect, new Color(40, 0, 0));
+            float cRatio = comp.MaxHP > 0 ? (float)comp.CurrentHP / comp.MaxHP : 0f;
+            int fillW = (int)(cRect.Width * cRatio);
+            spriteBatch.Draw(_whitePixel, new Rectangle(cRect.X, cRect.Y, fillW, cRect.Height), Color.Crimson);
             
             compIndex++;
         }
-    }
 
-    private void DrawTargetPanel(SpriteBatch spriteBatch, Character target)
-    {
-        int panelW = 280;
-        int panelH = 65;
-        // Top right corner using logical width
-        Vector2 panelPos = new Vector2(GameConstants.LogicalScreenWidth - panelW - 20, 20);
-
-        // Draw Panel Background (Glassmorphism dark gray with subtle red glow border for hostility)
-        spriteBatch.Draw(
-            _whitePixel,
-            new Rectangle((int)panelPos.X, (int)panelPos.Y, panelW, panelH),
-            new Color(15, 10, 10, 230)
-        );
-
-        DrawOutline(spriteBatch, new Rectangle((int)panelPos.X, (int)panelPos.Y, panelW, panelH), new Color(180, 50, 50, 180), 1);
-
-        // Target Info text
-        Vector2 namePos = panelPos + new Vector2(15, 12);
-        string nameStr = $"{target.Name}  Lv.{target.Level}";
-        FontManager.DrawString(spriteBatch, nameStr, namePos, Color.OrangeRed, 0.75f);
-
-        // HP Bar
-        Vector2 hpPos = namePos + new Vector2(0, 18);
-        DrawStatusBar(spriteBatch, hpPos, 160, 10, target.CurrentHP, target.MaxHP, Color.Crimson, "HP");
-        string hpStr = $"{target.CurrentHP}/{target.MaxHP}";
-        FontManager.DrawString(spriteBatch, hpStr, hpPos + new Vector2(170, 0), Color.LightGray, 0.65f);
-    }
-
-    private void DrawStatusBar(SpriteBatch sb, Vector2 pos, int width, int height, int current, int max, Color color, string prefix)
-    {
-        // prefix text if any
-        float textOffset = 0f;
-        if (!string.IsNullOrEmpty(prefix))
+        // ==========================================
+        // FLOATING TARGET OVERLAY
+        // ==========================================
+        if (player.Target != null && !player.Target.IsDead)
         {
-            FontManager.DrawString(sb, prefix, pos, color, 0.65f);
-            textOffset = FontManager.MeasureString(prefix, 0.65f).X + 4f;
+            int tX = logicalWidth / 2 - (int)(120 * scale);
+            int tY = 10;
+            UIHelper.DrawInsetBox(spriteBatch, new Rectangle(tX, tY, (int)(240 * scale), (int)(40 * scale)));
+            DrawText(spriteBatch, player.Target.Name, tX + (int)(10 * scale), tY + 5, Color.OrangeRed, valueFontScale);
+            
+            Rectangle tHpRect = new Rectangle(tX + (int)(10 * scale), tY + (int)(25 * scale), (int)(220 * scale), (int)(10 * scale));
+            spriteBatch.Draw(_whitePixel, tHpRect, new Color(40, 0, 0));
+            float tRatio = (float)player.Target.CurrentHP / player.Target.MaxHP;
+            spriteBatch.Draw(_whitePixel, new Rectangle(tHpRect.X, tHpRect.Y, (int)(tHpRect.Width * tRatio), tHpRect.Height), Color.Crimson);
         }
-
-        Vector2 barPos = pos + new Vector2(textOffset, 0f);
-
-        // Background bar
-        sb.Draw(
-            _whitePixel,
-            new Rectangle((int)barPos.X, (int)barPos.Y, width, height),
-            new Color(40, 40, 45)
-        );
-
-        // Filled bar
-        float ratio = max > 0 ? (float)current / max : 0f;
-        int fillW = (int)(width * MathHelper.Clamp(ratio, 0f, 1f));
-
-        sb.Draw(
-            _whitePixel,
-            new Rectangle((int)barPos.X, (int)barPos.Y, fillW, height),
-            color
-        );
     }
 
-    private string GetKoreanState(CompanionState state)
+    private void DrawText(SpriteBatch sb, string text, int x, int y, Color color, float scale)
     {
-        return state switch
-        {
-            CompanionState.Idle => "대기",
-            CompanionState.FollowPlayer => "따라가기",
-            CompanionState.AssistAttack => "전투중",
-            CompanionState.Retreat => "후퇴",
-            CompanionState.Dead => "사망",
-            _ => "알 수 없음",
-        };
+        FontManager.DrawString(sb, text, new Vector2(x, y), color, scale);
     }
 
-    private void DrawOutline(SpriteBatch sb, Rectangle rect, Color color, int thickness)
+    private void DrawTextRightAligned(SpriteBatch sb, string text, int rightX, int y, Color color, float scale)
     {
-        // Top
-        sb.Draw(_whitePixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
-        // Bottom
-        sb.Draw(_whitePixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
-        // Left
-        sb.Draw(_whitePixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
-        // Right
-        sb.Draw(_whitePixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
+        float width = FontManager.MeasureString(text, scale).X;
+        FontManager.DrawString(sb, text, new Vector2(rightX - width, y), color, scale);
     }
 }

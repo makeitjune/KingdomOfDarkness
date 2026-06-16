@@ -12,12 +12,20 @@ public class Camera2D
     /// <summary>
     /// The center of the actual window/screen.
     /// </summary>
-    public Vector2 ScreenCenter { get; set; }
+    public Vector2 ScreenCenter 
+    {
+        get 
+        {
+            float logicalWidth = GameConstants.LogicalScreenWidth;
+            float logicalHeight = GameConstants.LogicalScreenHeight;
+            // Shift the camera center up by half the HUD height so the player is centered in the visible area above the HUD
+            float panelHeight = logicalHeight * 0.38f;
+            return new Vector2(logicalWidth / 2f, (logicalHeight - panelHeight) / 2f);
+        }
+    }
 
     public Camera2D(int screenWidth, int screenHeight)
     {
-        // Divide by RenderScale so the camera center matches the scaled display
-        ScreenCenter = new Vector2(screenWidth / 2f, screenHeight / 2f) / GameConstants.RenderScale;
         Position = Vector2.Zero;
     }
 
