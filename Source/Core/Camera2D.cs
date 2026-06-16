@@ -16,10 +16,10 @@ public class Camera2D
     {
         get 
         {
-            float logicalWidth = GameConstants.LogicalScreenWidth;
-            float logicalHeight = GameConstants.LogicalScreenHeight;
+            float logicalWidth = GameConstants.VirtualWidth;
+            float logicalHeight = GameConstants.VirtualHeight;
             // Shift the camera center up by half the HUD height so the player is centered in the visible area above the HUD
-            float panelHeight = logicalHeight * 0.38f;
+            float panelHeight = 144f;
             return new Vector2(logicalWidth / 2f, (logicalHeight - panelHeight) / 2f);
         }
     }
@@ -59,11 +59,8 @@ public class Camera2D
     /// </summary>
     public Vector2 ScreenToWorld(Vector2 screenPosition)
     {
-        // Adjust mouse screen position by render scale
-        Vector2 scaledScreenPos = screenPosition / GameConstants.RenderScale;
-
         // 1. Convert screen position to camera-adjusted screen position
-        Vector2 cameraAdjustedScreenPos = scaledScreenPos + Position - ScreenCenter;
+        Vector2 cameraAdjustedScreenPos = screenPosition + Position - ScreenCenter;
         
         // 2. Convert to world coordinates
         return IsoMath.ScreenToWorldApprox(cameraAdjustedScreenPos);

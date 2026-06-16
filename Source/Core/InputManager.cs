@@ -11,8 +11,15 @@ public class InputManager
     private MouseState _currentMouseState;
     private MouseState _previousMouseState;
 
+    private DisplayScaler _displayScaler;
+
     public Vector2 MovementIntent { get; private set; }
     public bool IsAttackRequested { get; private set; }
+
+    public InputManager(DisplayScaler displayScaler)
+    {
+        _displayScaler = displayScaler;
+    }
 
     public void Update()
     {
@@ -69,5 +76,5 @@ public class InputManager
         return _currentMouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released;
     }
 
-    public Vector2 MousePosition => new Vector2(_currentMouseState.X, _currentMouseState.Y);
+    public Vector2 MousePosition => _displayScaler.ActualToVirtual(new Vector2(_currentMouseState.X, _currentMouseState.Y));
 }

@@ -147,8 +147,8 @@ public class IsoTileMap
 
                 // Frustum culling: only draw if tile is within screen bounds (with padding)
                 float cullPadding = 100f;
-                if (screenPos.X < -cullPadding || screenPos.X > GameConstants.ScreenWidth + cullPadding ||
-                    screenPos.Y < -cullPadding || screenPos.Y > GameConstants.ScreenHeight + cullPadding)
+                if (screenPos.X < -cullPadding || screenPos.X > GameConstants.VirtualWidth + cullPadding ||
+                    screenPos.Y < -cullPadding || screenPos.Y > GameConstants.VirtualHeight + cullPadding)
                 {
                     continue;
                 }

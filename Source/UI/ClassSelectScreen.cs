@@ -27,8 +27,8 @@ public class ClassSelectScreen
         // Mouse checks
         if (inputManager.IsLeftMouseClicked())
         {
-            Vector2 mousePos = inputManager.MousePosition / GameConstants.RenderScale;
-            float virtualW = GameConstants.ScreenWidth / GameConstants.RenderScale;
+            Vector2 mousePos = inputManager.MousePosition;
+            float virtualW = GameConstants.VirtualWidth;
             
             int startY = 150;
             int spacing = 50;
@@ -48,8 +48,8 @@ public class ClassSelectScreen
 
     public void Draw(SpriteBatch spriteBatch)
     {
-        float virtualW = GameConstants.ScreenWidth / GameConstants.RenderScale;
-        float virtualH = GameConstants.ScreenHeight / GameConstants.RenderScale;
+        float virtualW = GameConstants.VirtualWidth;
+        float virtualH = GameConstants.VirtualHeight;
 
         // Background
         spriteBatch.Draw(_whitePixel, new Rectangle(0, 0, (int)virtualW, (int)virtualH), new Color(15, 15, 20));

@@ -21,6 +21,9 @@ public class Game1 : Game
     // Graphics
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
+    private DisplayScaler _displayScaler;
+    private RenderTarget2D _virtualRenderTarget;
+    private RenderTarget2D _uiRenderTarget;
 
     // Core Helpers
     private InputManager _inputManager;
@@ -69,19 +72,18 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        // Set Fullscreen borderless window
-        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
-        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
-        _graphics.IsFullScreen = true;
+        // Set Default Windowed mode
+        _graphics.PreferredBackBufferWidth = GameConstants.DefaultWindowWidth;
+        _graphics.PreferredBackBufferHeight = GameConstants.DefaultWindowHeight;
+        _graphics.IsFullScreen = false;
         _graphics.HardwareModeSwitch = false;
+        Window.AllowUserResizing = true;
         _graphics.ApplyChanges();
 
-        // Update GameConstants to match new resolution
-        GameConstants.ScreenWidth = _graphics.PreferredBackBufferWidth;
-        GameConstants.ScreenHeight = _graphics.PreferredBackBufferHeight;
+        _displayScaler = new DisplayScaler(GameConstants.VirtualWidth, GameConstants.VirtualHeight);
 
-        _inputManager = new InputManager();
-        _camera = new Camera2D(GameConstants.ScreenWidth, GameConstants.ScreenHeight);
+        _inputManager = new InputManager(_displayScaler);
+        _camera = new Camera2D(GameConstants.VirtualWidth, GameConstants.VirtualHeight);
         
         _movementSystem = new IsoMovementSystem();
         _companionAISystem = new CompanionAISystem();
@@ -98,6 +100,22 @@ public class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+        
+        _virtualRenderTarget = new RenderTarget2D(
+            GraphicsDevice,
+            GameConstants.VirtualWidth,
+            GameConstants.VirtualHeight,
+            false,
+            GraphicsDevice.PresentationParameters.BackBufferFormat,
+            DepthFormat.Depth24);
+
+        _uiRenderTarget = new RenderTarget2D(
+            GraphicsDevice,
+            GameConstants.VirtualWidth,
+            GameConstants.VirtualHeight,
+            false,
+            GraphicsDevice.PresentationParameters.BackBufferFormat,
+            DepthFormat.Depth24);
 
         // Load Korean-capable SpriteFont
         FontManager.LoadContent(Content);
@@ -220,15 +238,31 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
+        var keyboardState = Keyboard.GetState();
+
         // Handle exit input
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
-            Keyboard.GetState().IsKeyDown(Keys.Escape))
+            keyboardState.IsKeyDown(Keys.Escape))
         {
             Exit();
         }
 
+        // Toggle Fullscreen on Alt+Enter or F11
+        if ((keyboardState.IsKeyDown(Keys.Enter) && (keyboardState.IsKeyDown(Keys.LeftAlt) || keyboardState.IsKeyDown(Keys.RightAlt))) || 
+            keyboardState.IsKeyDown(Keys.F11))
+        {
+            // Simple debounce using previous keyboard state handled inside InputManager, but we are before InputManager.Update.
+            // Let's just use InputManager.IsKeyPressed for F11 or Alt+Enter.
+        }
+
         // Update inputs
         _inputManager.Update();
+
+        if ((_inputManager.IsKeyPressed(Keys.Enter) && (keyboardState.IsKeyDown(Keys.LeftAlt) || keyboardState.IsKeyDown(Keys.RightAlt))) || 
+            _inputManager.IsKeyPressed(Keys.F11))
+        {
+            _graphics.ToggleFullScreen();
+        }
 
         if (_currentState == GameStateType.ClassSelect)
         {
@@ -357,61 +391,107 @@ public class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        _displayScaler.Update(
+            GraphicsDevice.PresentationParameters.BackBufferWidth,
+            GraphicsDevice.PresentationParameters.BackBufferHeight);
+
+        // 1. Draw game into virtual 4:3 canvas (Pixel Art)
+        GraphicsDevice.SetRenderTarget(_virtualRenderTarget);
         GraphicsDevice.Clear(new Color(20, 24, 28)); // Sleek dark gray background
 
-        Matrix scaleMatrix = Matrix.CreateScale(GameConstants.RenderScale);
+        if (_currentState == GameStateType.Playing)
+        {
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+            
+            // Draw isometric map
+            _currentTileMap.Draw(_spriteBatch, _camera);
+
+            // Draw entities in depth-sorted order
+            _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
+
+            _spriteBatch.End();
+        }
+
+        // 2. Draw UI into UI 4:3 canvas (Smooth Text)
+        GraphicsDevice.SetRenderTarget(_uiRenderTarget);
+        GraphicsDevice.Clear(Color.Transparent);
 
         if (_currentState == GameStateType.ClassSelect)
         {
-            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
             _classSelectScreen.Draw(_spriteBatch);
             _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
         }
-
-        if (_currentState != GameStateType.Playing)
+        else if (_currentState == GameStateType.Playing)
         {
-            base.Draw(gameTime);
-            return;
+            // Draw Speech Bubbles, Damage Popups, and Entity Labels (LinearClamp for text)
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
+
+            foreach (var entity in _entities)
+            {
+                if (entity is Character character && character.IsActive)
+                {
+                    character.DrawUI(_spriteBatch, _camera);
+                }
+            }
+
+            foreach (var companion in _companions)
+            {
+                if (_currentMapType == MapType.HuntingGround && !companion.IsRecruited) continue;
+                companion.Bubble.Draw(_spriteBatch, _camera, companion, _whitePixel);
+            }
+
+            if (_currentMapType == MapType.HuntingGround)
+            {
+                _damagePopupManager.Draw(_spriteBatch, _camera);
+            }
+
+            _spriteBatch.End();
+
+            // UI Layer (LinearClamp for text)
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
+            // Draw HUD overlay on top of everything
+            _hud.Draw(_spriteBatch, _player, _companions, _whitePixel);
+
+            // Draw Companion Info Panel if open
+            _companionInfoPanel.Draw(_spriteBatch);
+            _spriteBatch.End();
         }
 
-        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, scaleMatrix);
-        
-        // Draw isometric map
-        _currentTileMap.Draw(_spriteBatch, _camera);
+        // 3. Draw final canvases into actual backbuffer
+        GraphicsDevice.SetRenderTarget(null);
+        GraphicsDevice.Clear(Color.Black);
 
-        // Draw entities in depth-sorted order
-        _renderOrderSystem.DrawEntities(_spriteBatch, _camera, _entities);
+        // Draw pixel art canvas with PointClamp
+        _spriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.PointClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone);
+
+        _spriteBatch.Draw(
+            _virtualRenderTarget,
+            _displayScaler.DestinationRectangle,
+            Color.White);
 
         _spriteBatch.End();
 
-        // Draw Speech Bubbles and Damage Popups with LinearClamp so the text isn't jagged
-        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
+        // Draw UI canvas with LinearClamp
+        _spriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.LinearClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone);
 
-        foreach (var companion in _companions)
-        {
-            if (_currentMapType == MapType.HuntingGround && !companion.IsRecruited) continue;
-            companion.Bubble.Draw(_spriteBatch, _camera, companion, _whitePixel);
-        }
+        _spriteBatch.Draw(
+            _uiRenderTarget,
+            _displayScaler.DestinationRectangle,
+            Color.White);
 
-        if (_currentMapType == MapType.HuntingGround)
-        {
-            _damagePopupManager.Draw(_spriteBatch, _camera);
-        }
-
-        _spriteBatch.End();
-
-        // UI Layer uses LinearClamp for crisp text scaling
-        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, scaleMatrix);
-        // Draw HUD overlay on top of everything
-        _hud.Draw(_spriteBatch, _player, _companions, _whitePixel);
-
-        // Draw Companion Info Panel if open
-        _companionInfoPanel.Draw(_spriteBatch);
         _spriteBatch.End();
 
         base.Draw(gameTime);
     }
 }
-

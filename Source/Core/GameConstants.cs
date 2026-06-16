@@ -6,14 +6,13 @@ public static class GameConstants
     public const int TileHeight = 32;
     public const float DefaultPlayerMoveSpeed = 3.5f; // logical units per second
     
-    // Screen settings
-    public static int ScreenWidth = 1024;
-    public static int ScreenHeight = 768;
-    
-    // Pixel Art Scale
-    public const float RenderScale = 2.0f;
+    // Display Scaler Settings
+    public const int VirtualWidth = 800;
+    public const int VirtualHeight = 600;
 
-    // Logical dimensions for UI
-    public static float LogicalScreenWidth => ScreenWidth / RenderScale;
-    public static float LogicalScreenHeight => ScreenHeight / RenderScale;
+    // Window defaults
+    public const int DefaultWindowWidth = 1280;
+    public const int DefaultWindowHeight = 960;
+
+    // Remove RenderScale and old Logical dimensions
 }

@@ -13,7 +13,7 @@ public class Player : Character
     public Player(Texture2D whitePixel, Vector2 startWorldPosition, CharacterClassType classType)
         : base(
             whitePixel,
-            "아레스", // Player's name
+            "Ares", // Player's name
             ClassDatabase.GetClass(classType)
         )
     {

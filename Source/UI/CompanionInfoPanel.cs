@@ -28,8 +28,8 @@ public class CompanionInfoPanel
         int panelW = 300;
         int panelH = 200;
         _panelRect = new Rectangle(
-            (int)(GameConstants.LogicalScreenWidth / 2 - panelW / 2),
-            (int)(GameConstants.LogicalScreenHeight / 2 - panelH / 2),
+            (int)(GameConstants.VirtualWidth / 2 - panelW / 2),
+            (int)(GameConstants.VirtualHeight / 2 - panelH / 2),
             panelW,
             panelH
         );
@@ -56,7 +56,7 @@ public class CompanionInfoPanel
         // If user left clicks...
         if (inputManager.IsLeftMouseClicked())
         {
-            Vector2 mousePos = inputManager.MousePosition / GameConstants.RenderScale;
+            Vector2 mousePos = inputManager.MousePosition;
 
             // Check if clicked the button
             if (_buttonRect.Contains(mousePos.X, mousePos.Y))

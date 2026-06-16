@@ -197,7 +197,21 @@ public abstract class Character : Entity
             Color.White * alpha
         );
 
-        // 4. Draw name label above character (Korean-capable via FontManager)
+        // 5. Draw status health bar
+        if (!IsDead)
+        {
+            DrawSimpleHealthBar(spriteBatch, screenPos, charHeight);
+        }
+    }
+
+    public void DrawUI(SpriteBatch spriteBatch, Camera2D camera)
+    {
+        int charWidth = 24;
+        int charHeight = 48;
+        float alpha = IsDead ? 0.4f : 1.0f;
+        Vector2 screenPos = camera.WorldToCameraScreen(WorldPosition);
+
+        // Draw name label above character (Korean-capable via FontManager)
         string displayName = Name;
         float nameScale = 0.7f;
         Vector2 nameSize = FontManager.MeasureString(displayName, nameScale);
@@ -207,18 +221,16 @@ public abstract class Character : Entity
         if (labelColor == Color.White) labelColor = Color.LightGray;
         FontManager.DrawString(spriteBatch, displayName, namePos, labelColor * alpha, nameScale);
 
-        // 5. Draw status health bar
-        if (!IsDead)
-        {
-            DrawSimpleHealthBar(spriteBatch, screenPos, charHeight);
-        }
-        else
+        if (IsDead)
         {
             // Draw "사망" (DEAD) text instead of health bar
             string deadText = "사망";
             Vector2 deadSize = FontManager.MeasureString(deadText, 0.7f);
             Vector2 deadPos = new Vector2(screenPos.X - deadSize.X / 2f, screenPos.Y - charHeight / 2f);
-            FontManager.DrawString(spriteBatch, deadText, deadPos, Color.Red, 0.7f);
+            
+            // Text shadow for readability
+            FontManager.DrawString(spriteBatch, deadText, deadPos + new Vector2(1, 1), Color.Black, 0.7f);
+            FontManager.DrawString(spriteBatch, deadText, deadPos, Color.Red * alpha, 0.7f);
         }
     }
 

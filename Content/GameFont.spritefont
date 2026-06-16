@@ -31,7 +31,7 @@ Character ranges: ASCII + Hangul Syllables (AC00-D7A3)
     <!--
     Font style: Regular, Bold, Italic
     -->
-    <Style>Regular</Style>
+    <Style>Bold</Style>
 
     <!--
     Default character used when drawing strings with unknown characters.
