@@ -21,15 +21,19 @@ public class Game1 : Game
     // World Map
     private IsoTileMap _tileMap;
 
-    // Entities & Systems
+    // Entities
     private Texture2D _whitePixel;
     private Player _player;
     private Companion _companion;
+    private List<Monster> _monsters;
     private List<Entity> _entities;
     
     // Systems
     private IsoMovementSystem _movementSystem;
     private CompanionAISystem _companionAISystem;
+    private MonsterAISystem _monsterAISystem;
+    private CombatSystem _combatSystem;
+    private LevelSystem _levelSystem;
     private RenderOrderSystem _renderOrderSystem;
 
     public Game1()
@@ -61,12 +65,25 @@ public class Game1 : Game
         // Instantiate companion near player
         _companion = new Companion(_whitePixel, _player.WorldPosition + new Vector2(-1f, 1f));
 
+        // Instantiate monsters
+        _monsters = new List<Monster>
+        {
+            new Monster(_whitePixel, new Vector2(12f, 8f))
+        };
+
         // Instantiate entity list and add characters
         _entities = new List<Entity> { _player, _companion };
+        foreach (var monster in _monsters)
+        {
+            _entities.Add(monster);
+        }
 
         // Instantiate systems
         _movementSystem = new IsoMovementSystem();
         _companionAISystem = new CompanionAISystem();
+        _monsterAISystem = new MonsterAISystem();
+        _levelSystem = new LevelSystem();
+        _combatSystem = new CombatSystem(_levelSystem);
         _renderOrderSystem = new RenderOrderSystem();
 
         // Position camera to look at the player immediately
@@ -103,6 +120,17 @@ public class Game1 : Game
         _companionAISystem.Update(gameTime, _companion, _player);
         _movementSystem.Update(gameTime, _companion);
         _companion.Update(gameTime);
+
+        // Update Monsters AI and Physics
+        foreach (var monster in _monsters)
+        {
+            _monsterAISystem.Update(gameTime, monster, _player, _companion);
+            _movementSystem.Update(gameTime, monster);
+            monster.Update(gameTime);
+        }
+
+        // Update Combat interactions (handles cooldowns, damage, and rewards)
+        _combatSystem.Update(gameTime, _player, _companion, _monsters, _inputManager.IsAttackRequested);
 
         // Camera follow player in world-screen space
         Vector2 targetScreenPos = IsoMath.WorldToScreen(_player.WorldPosition);
